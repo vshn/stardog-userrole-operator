@@ -1,0 +1,7 @@
+apiVersion: stardogur.vshn.ch/v1alpha1
+kind: StarRole
+metadata:
+  name: starrole-sample
+spec:
+  # Add fields here
+  foo: bar
