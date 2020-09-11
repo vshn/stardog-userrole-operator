@@ -1,13 +1,13 @@
-# permissions for end users to view starroles.
+# permissions for end users to view stardogroles.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: starrole-viewer-role
+  name: stardogrole-viewer-role
 rules:
 - apiGroups:
   - stardog.vshn.ch
   resources:
-  - starroles
+  - stardogroles
   verbs:
   - get
   - list
@@ -15,6 +15,6 @@ rules:
 - apiGroups:
   - stardog.vshn.ch
   resources:
-  - starroles/status
+  - stardogroles/status
   verbs:
   - get

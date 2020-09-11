@@ -67,12 +67,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&controllers.StarRoleReconciler{
+	if err = (&controllers.StardogRoleReconciler{
 		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("StarRole"),
+		Log:    ctrl.Log.WithName("controllers").WithName("StardogRole"),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "StarRole")
+		setupLog.Error(err, "unable to create controller", "controller", "StardogRole")
 		os.Exit(1)
 	}
 	// +kubebuilder:scaffold:builder

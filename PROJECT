@@ -4,7 +4,7 @@ projectName: stardog-userrole-operator
 repo: github.com/vshn/stardog-userrole-operator
 resources:
 - group: stardog
-  kind: StarRole
+  kind: StardogRole
   version: v1alpha1
 version: 3-alpha
 plugins:

@@ -27,27 +27,27 @@ import (
 	stardogv1alpha1 "github.com/vshn/stardog-userrole-operator/api/v1alpha1"
 )
 
-// StarRoleReconciler reconciles a StarRole object
-type StarRoleReconciler struct {
+// StardogRoleReconciler reconciles a StardogRole object
+type StardogRoleReconciler struct {
 	client.Client
 	Log    logr.Logger
 	Scheme *runtime.Scheme
 }
 
-// +kubebuilder:rbac:groups=stardog.vshn.ch,resources=starroles,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=stardog.vshn.ch,resources=starroles/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=stardog.vshn.ch,resources=stardogroles,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=stardog.vshn.ch,resources=stardogroles/status,verbs=get;update;patch
 
-func (r *StarRoleReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
+func (r *StardogRoleReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	_ = context.Background()
-	_ = r.Log.WithValues("starrole", req.NamespacedName)
+	_ = r.Log.WithValues("stardogrole", req.NamespacedName)
 
 	// your logic here
 
 	return ctrl.Result{}, nil
 }
 
-func (r *StarRoleReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *StardogRoleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&stardogv1alpha1.StarRole{}).
+		For(&stardogv1alpha1.StardogRole{}).
 		Complete(r)
 }

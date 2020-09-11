@@ -1,13 +1,13 @@
-# permissions for end users to edit starroles.
+# permissions for end users to edit stardogroles.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: starrole-editor-role
+  name: stardogrole-editor-role
 rules:
 - apiGroups:
   - stardog.vshn.ch
   resources:
-  - starroles
+  - stardogroles
   verbs:
   - create
   - delete
@@ -19,6 +19,6 @@ rules:
 - apiGroups:
   - stardog.vshn.ch
   resources:
-  - starroles/status
+  - stardogroles/status
   verbs:
   - get
