@@ -27,7 +27,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	stardogurv1alpha1 "github.com/vshn/stardog-userrole-operator/api/v1alpha1"
+	stardogv1alpha1 "github.com/vshn/stardog-userrole-operator/api/v1alpha1"
 	"github.com/vshn/stardog-userrole-operator/controllers"
 	// +kubebuilder:scaffold:imports
 )
@@ -40,7 +40,7 @@ var (
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
-	utilruntime.Must(stardogurv1alpha1.AddToScheme(scheme))
+	utilruntime.Must(stardogv1alpha1.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 }
 

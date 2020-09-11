@@ -3,7 +3,7 @@ layout: go.kubebuilder.io/v2
 projectName: stardog-userrole-operator
 repo: github.com/vshn/stardog-userrole-operator
 resources:
-- group: stardogur
+- group: stardog
   kind: StarRole
   version: v1alpha1
 version: 3-alpha

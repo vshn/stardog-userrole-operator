@@ -5,7 +5,7 @@ metadata:
   name: starrole-viewer-role
 rules:
 - apiGroups:
-  - stardogur.vshn.ch
+  - stardog.vshn.ch
   resources:
   - starroles
   verbs:
@@ -13,7 +13,7 @@ rules:
   - list
   - watch
 - apiGroups:
-  - stardogur.vshn.ch
+  - stardog.vshn.ch
   resources:
   - starroles/status
   verbs:

@@ -1,4 +1,4 @@
-apiVersion: stardogur.vshn.ch/v1alpha1
+apiVersion: stardog.vshn.ch/v1alpha1
 kind: StarRole
 metadata:
   name: starrole-sample

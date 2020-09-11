@@ -24,7 +24,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	stardogurv1alpha1 "github.com/vshn/stardog-userrole-operator/api/v1alpha1"
+	stardogv1alpha1 "github.com/vshn/stardog-userrole-operator/api/v1alpha1"
 )
 
 // StarRoleReconciler reconciles a StarRole object
@@ -34,8 +34,8 @@ type StarRoleReconciler struct {
 	Scheme *runtime.Scheme
 }
 
-// +kubebuilder:rbac:groups=stardogur.vshn.ch,resources=starroles,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=stardogur.vshn.ch,resources=starroles/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=stardog.vshn.ch,resources=starroles,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=stardog.vshn.ch,resources=starroles/status,verbs=get;update;patch
 
 func (r *StarRoleReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	_ = context.Background()
@@ -48,6 +48,6 @@ func (r *StarRoleReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 func (r *StarRoleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&stardogurv1alpha1.StarRole{}).
+		For(&stardogv1alpha1.StarRole{}).
 		Complete(r)
 }
