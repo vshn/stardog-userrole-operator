@@ -1,0 +1,48 @@
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  name: manager-role
+rules:
+- apiGroups:
+  - stardog.vshn.ch
+  resources:
+  - stardogroles
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - stardog.vshn.ch
+  resources:
+  - stardogroles/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - stardog.vshn.ch
+  resources:
+  - stardogusers
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - stardog.vshn.ch
+  resources:
+  - stardogusers/status
+  verbs:
+  - get
+  - patch
+  - update
