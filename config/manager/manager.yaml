@@ -23,9 +23,7 @@ spec:
         control-plane: controller-manager
     spec:
       containers:
-      - command:
-        - /manager
-        args:
+      - args:
         - --enable-leader-election
         image: stardog-userrole-operator:latest
         name: manager
