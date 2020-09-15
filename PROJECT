@@ -1,0 +1,14 @@
+domain: vshn.ch
+layout: go.kubebuilder.io/v2
+projectName: stardog-userrole-operator
+repo: github.com/vshn/stardog-userrole-operator
+resources:
+- group: stardog
+  kind: StardogRole
+  version: v1alpha1
+- group: stardog
+  kind: StardogUser
+  version: v1alpha1
+version: 3-alpha
+plugins:
+  go.sdk.operatorframework.io/v2-alpha: {}
