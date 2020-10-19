@@ -1,7 +1,7 @@
 swagger: '2.0'
 info:
   version: 1.0.0
-  title: Stardog Admin
+  title: stardogrest
   license:
     name: MIT
 host: stardog-namespace:5820
