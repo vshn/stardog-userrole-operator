@@ -42,7 +42,7 @@ dist:
 .PHONY: build
 # Build manager binary
 build: generate fmt vet
-	go build -o bin/espejo main.go
+	go build -o bin/stardog-userrole-operator main.go
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
 run: generate fmt vet manifests

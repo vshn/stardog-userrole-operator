@@ -25,17 +25,28 @@ import (
 
 // StardogUserSpec defines the desired state of StardogUser
 type StardogUserSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	// StardogInstanceRef references a StardogInstance object.
+	StardogInstanceRef string `json:"stardogInstanceRef,omitempty"`
+	// StardogUserCredentialsSpec describes the credentials of a Stardog user
+	Credentials StardogUserCredentialsSpec `json:"credentials,omitempty"`
+	// Roles describe a list of StardogRoles assigned to a Stardog user. The names are referring the StardogRole metadata names, not the role name that is supposed to be in Stardog.
+	Roles []string `json:"roles,omitempty"`
+}
 
-	// Foo is an example field of StardogUser. Edit StardogUser_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+// StardogUserCredentialsSpec specifies the password of a Stardog user
+type StardogUserCredentialsSpec struct {
+	// Namespace specifies the namespace of the Secret referenced in SecretRef.
+	// Defaults to .metadata.namespace.
+	Namespace string `json:"namespace,omitempty"`
+	// SecretRef references the v1/Secret name which contains the "username" and "password" keys.
+	SecretRef string `json:"secretRef,omitempty"`
 }
 
 // StardogUserStatus defines the observed state of StardogUser
 type StardogUserStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	// Conditions contain the states of the StardogUser. A StardogUser is considered Ready when the user has been
+	// persisted to Stardog DB.
+	Conditions []StardogCondition `json:"conditions,omitempty" patchStrategy:"merge"`
 }
 
 // +kubebuilder:object:root=true

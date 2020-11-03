@@ -1,0 +1,24 @@
+# permissions for end users to edit stardoginstances.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: stardoginstance-editor-role
+rules:
+- apiGroups:
+  - stardog.vshn.ch
+  resources:
+  - stardoginstances
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - stardog.vshn.ch
+  resources:
+  - stardoginstances/status
+  verbs:
+  - get

@@ -1,0 +1,7 @@
+apiVersion: stardog.vshn.ch/v1alpha1
+kind: StardogInstance
+metadata:
+  name: stardoginstance-sample
+spec:
+  # Add fields here
+  foo: bar
