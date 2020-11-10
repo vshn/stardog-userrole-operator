@@ -106,6 +106,24 @@ else
 CONTROLLER_GEN=$(shell which controller-gen)
 endif
 
+# find or intall autorest
+find-autorest:
+ifeq (, $(shell which autorest))
+	@{ \
+	set -e ;\
+	NODE_PATH=$(shell ./find-node-or-install) \
+	PATH=$$NODE_PATH:$(shell echo $$PATH) \
+	npm install autorest ;\
+	}
+AUTOREST=node_modules/autorest/entrypoints/app.js
+else
+AUTOREST=$(shell which autorest)
+endif
+
+autorest: find-autorest
+	$(AUTOREST) --go --package-name="github.com/vshn/stardog-userrole-operator/stardogrest" --namespace="stardogrest" --input-file="stardogrest/stardog_swagger.yaml" --output-folder="stardogrest"
+	go fmt ./...
+
 kustomize:
 ifeq (, $(shell which kustomize))
 	@{ \
