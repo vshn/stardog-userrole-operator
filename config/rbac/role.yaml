@@ -9,6 +9,26 @@ rules:
 - apiGroups:
   - stardog.vshn.ch
   resources:
+  - stardoginstances
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - stardog.vshn.ch
+  resources:
+  - stardoginstances/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - stardog.vshn.ch
+  resources:
   - stardogroles
   verbs:
   - create

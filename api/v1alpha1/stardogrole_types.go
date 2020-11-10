@@ -25,17 +25,32 @@ import (
 
 // StardogRoleSpec defines the desired state of StardogRole
 type StardogRoleSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	// RoleName describes (overrides) the name of a role that will be maintained in a Stardog instance.
+	// Defaults to .metadata.name.
+	RoleName string `json:"roleName,omitempty"`
+	// StardogInstanceRef references the StardogInstance object in which the role is maintained.
+	StardogInstanceRef string `json:"stardogInstanceRef,omitempty"`
+	// Permissions lists the permissions assigned to a role
+	Permissions []StardogPermissionSpec `json:"permissions,omitempty"`
+}
 
-	// Foo is an example field of StardogRole. Edit StardogRole_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+// StardogPermissionSpec defines a Stardog permission assigned to a Role
+type StardogPermissionSpec struct {
+	// Action describes the action a specific permission is assigned to
+	// +kubebuilder:validation:Enum=ALL;CREATE;DELETE;READ;WRITE;GRANT;REVOKE;EXECUTE
+	Action string `json:"action,omitempty"`
+	// ResourceType describes the type of resource a specific permission is assigned to
+	// +kubebuilder:validation:Enum=DB;USER;ROLE;ADMIN;METADATA;NAMEDGRAPH;VIRTUALGRAPH;ICVCONSTRAINTS
+	ResourceType string `json:"resourceType,omitempty"`
+	// Resources is a list of permission objects that get each targeted by the action and resource type properties
+	Resources []string `json:"resources,omitempty"`
 }
 
 // StardogRoleStatus defines the observed state of StardogRole
 type StardogRoleStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	// Conditions contain the states of the StardogRole. A StardogRole is considered Ready when the role has been
+	// persisted to Stardog DB.
+	Conditions []StardogCondition `json:"conditions,omitempty" patchStrategy:"merge"`
 }
 
 // +kubebuilder:object:root=true
