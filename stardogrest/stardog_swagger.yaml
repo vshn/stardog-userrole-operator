@@ -1,0 +1,669 @@
+swagger: '2.0'
+info:
+  version: 1.0.0
+  title: stardogrest
+  license:
+    name: MIT
+host: stardog-namespace:5820
+basePath: "/admin"
+schemes:
+- http
+consumes:
+- application/json
+produces:
+- application/json
+paths:
+  "/users":
+    get:
+      summary: List all users.
+      operationId: listUsers
+      tags:
+      - users
+      security:
+      - BasicAuth: []
+      responses:
+        '200':
+          description: A dict containing an array of usernames
+          schema:
+            "$ref": "#/definitions/Users"
+        default:
+          description: unexpected error
+          schema:
+            "$ref": "#/definitions/Error"
+    post:
+      summary: Creates a new user.
+      operationId: createUser
+      tags:
+      - users
+      security:
+      - BasicAuth: []
+      consumes:
+      - application/json
+      parameters:
+      - in: body
+        name: user
+        description: The user to create.
+        schema:
+          "$ref": "#/definitions/User"
+      responses:
+        '201':
+          description: Null response
+        default:
+          description: unexpected error
+          schema:
+            "$ref": "#/definitions/Error"
+  "/users/valid":
+    get:
+      summary: Validate the user credentials
+      operationId: validateUser
+      tags:
+      - users
+      security:
+      - BasicAuth: []
+      responses:
+        '200':
+          description: Null response
+        default:
+          description: User invalid
+          schema:
+            "$ref": "#/definitions/Error"
+  "/users/{user}/pwd":
+    put:
+      summary: Change the users password.
+      operationId: changePassword
+      tags:
+      - users
+      security:
+      - BasicAuth: []
+      consumes:
+      - application/json
+      parameters:
+      - name: user
+        in: path
+        required: true
+        description: The username of the user whose password should be changed
+        type: string
+      - name: password
+        in: body
+        required: true
+        description: The new password
+        schema:
+          "$ref": "#/definitions/Password"
+      responses:
+        '200':
+          description: Null response
+        default:
+          description: unexpected error
+          schema:
+            "$ref": "#/definitions/Error"
+  "/users/{user}/enabled":
+    get:
+      summary: Get the user's enabled status.
+      operationId: isEnabled
+      tags:
+      - users
+      security:
+      - BasicAuth: []
+      parameters:
+      - name: user
+        in: path
+        required: true
+        description: The username of the user whose status should be queried
+        type: string
+      responses:
+        '200':
+          description: Whether the user is enabled
+          schema:
+            "$ref": "#/definitions/Enabled"  
+        default:
+          description: unexpected error
+          schema:
+            "$ref": "#/definitions/Error"
+    put:
+      summary: Enable/disable a user.
+      operationId: setEnabled
+      tags:
+      - users
+      security:
+      - BasicAuth: []
+      consumes:
+      - application/json
+      parameters:
+      - name: user
+        in: path
+        required: true
+        description: The username of the user whose status should be changed
+        type: string
+      - name: enable
+        in: body
+        required: true
+        description: The enabled status
+        schema:
+          "$ref": "#/definitions/Enabled"
+      responses:
+        '200':
+          description: Null response
+        default:
+          description: unexpected error
+          schema:
+            "$ref": "#/definitions/Error"
+  "/users/{user}/superuser":
+    get:
+      summary: Get the user's superuser status.
+      operationId: isSuperuser
+      tags:
+      - users
+      security:
+      - BasicAuth: []
+      parameters:
+      - name: user
+        in: path
+        required: true
+        description: The username of the user whose status should be queried
+        type: string
+      responses:
+        '200':
+          description: The user's superuser status
+          schema:
+            "$ref": "#/definitions/Superuser"  
+        default:
+          description: unexpected error
+          schema:
+            "$ref": "#/definitions/Error"
+  "/users/{user}/roles":
+    get:
+      summary: List the users roles.
+      operationId: listUserRoles
+      tags:
+      - users
+        roles
+      security:
+      - BasicAuth: []
+      parameters:
+      - name: user
+        in: path
+        required: true
+        description: The username of the user whose roles should be listed
+        type: string
+      responses:
+        '200':
+          description: The user's roles
+          schema:
+            "$ref": "#/definitions/Roles"  
+        default:
+          description: unexpected error
+          schema:
+            "$ref": "#/definitions/Error"
+    put:
+      summary: Set the roles of a user.
+      operationId: putRoles
+      tags:
+      - users
+        roles
+      security:
+      - BasicAuth: []
+      consumes:
+      - application/json
+      parameters:
+      - name: user
+        in: path
+        required: true
+        description: The username of the user whose roles should be changed
+        type: string
+      - name: roles
+        in: body
+        required: true
+        description: The new set of roles
+        schema:
+          "$ref": "#/definitions/Roles"
+      responses:
+        '200':
+          description: Null response
+        default:
+          description: unexpected error
+          schema:
+            "$ref": "#/definitions/Error"
+    post:
+      summary: Add a role to a user.
+      operationId: addRole
+      tags:
+      - users
+        roles
+      security:
+      - BasicAuth: []
+      consumes:
+      - application/json
+      parameters:
+      - name: user
+        in: path
+        required: true
+        description: The username of the user who gets the new role
+        type: string
+      - name: role
+        in: body
+        required: true
+        description: The name of the role to add
+        schema:
+          "$ref": "#/definitions/Rolename"
+      responses:
+        '204':
+          description: Null response
+        default:
+          description: unexpected error
+          schema:
+            "$ref": "#/definitions/Error"
+  "/users/{user}/roles/{role}":
+    delete:
+      summary: Remove a role from a user.
+      operationId: removeRole
+      tags:
+      - users
+        roles
+      security:
+      - BasicAuth: []
+      parameters:
+      - name: user
+        in: path
+        required: true
+        description: The username of the user whose role should be removed
+        type: string
+      - name: role
+        in: path
+        required: true
+        description: The name of the role to remove
+        type: string
+      responses:
+        '204':
+          description: Null response
+        default:
+          description: unexpected error
+          schema:
+            "$ref": "#/definitions/Error"
+  "/users/{user}":
+    delete:
+      summary: Remove a user.
+      operationId: removeUser
+      tags:
+      - users
+      security:
+      - BasicAuth: []
+      parameters:
+      - name: user
+        in: path
+        required: true
+        description: The username of the user to delete
+        type: string
+      responses:
+        '204':
+          description: Null response
+        default:
+          description: unexpected error
+          schema:
+            "$ref": "#/definitions/Error"
+  "/roles":
+    get:
+      summary: List all roles.
+      operationId: listRoles
+      tags:
+      - roles
+      security:
+      - BasicAuth: []
+      responses:
+        '200':
+          description: A dict containing an array of rolenames
+          schema:
+            "$ref": "#/definitions/Roles"
+        default:
+          description: unexpected error
+          schema:
+            "$ref": "#/definitions/Error"
+    post:
+      summary: Creates a new role.
+      operationId: createRole
+      tags:
+      - roles
+      security:
+      - BasicAuth: []
+      consumes:
+      - application/json
+      parameters:
+      - in: body
+        name: role
+        description: The role to create.
+        schema:
+          "$ref": "#/definitions/Rolename"
+      responses:
+        '201':
+          description: Null response
+        default:
+          description: unexpected error
+          schema:
+            "$ref": "#/definitions/Error"
+  "/roles/{role}/users":
+    get:
+      summary: List the users with the given role.
+      operationId: listRoleUsers
+      tags:
+      - users
+        roles
+      security:
+      - BasicAuth: []
+      parameters:
+      - name: role
+        in: path
+        required: true
+        description: The role name of the role whose users should be listed
+        type: string
+      responses:
+        '200':
+          description: The users assigned to the role
+          schema:
+            "$ref": "#/definitions/Users"  
+        default:
+          description: unexpected error
+          schema:
+            "$ref": "#/definitions/Error"
+  "/roles/{role}":
+    delete:
+      summary: Remove a role.
+      operationId: removeRole
+      tags:
+      - roles
+      security:
+      - BasicAuth: []
+      parameters:
+      - name: role
+        in: path
+        required: true
+        description: The name of the role to delete
+        type: string
+      - name: force
+        in: query
+        required: false
+        description: Whether to delete even if in use
+        type: boolean
+        default: true
+      responses:
+        '204':
+          description: Null response
+        default:
+          description: unexpected error
+          schema:
+            "$ref": "#/definitions/Error"
+  "/permissions/role/{role}":
+    get:
+      summary: List the role's permissions.
+      operationId: listRolePermissions
+      tags:
+      - roles
+        permissions
+      security:
+      - BasicAuth: []
+      parameters:
+      - name: role
+        in: path
+        required: true
+        description: The name of the role whose permissions should be listed
+        type: string
+      responses:
+        '200':
+          description: The roles's permissions
+          schema:
+            "$ref": "#/definitions/Permissions"  
+        default:
+          description: unexpected error
+          schema:
+            "$ref": "#/definitions/Error"
+    put:
+      summary: Add a permission to a role.
+      operationId: addRolePermission
+      tags:
+      - roles
+        permissions
+      security:
+      - BasicAuth: []
+      consumes:
+      - application/json
+      parameters:
+      - name: role
+        in: path
+        required: true
+        description: The role to add the permission to
+        type: string
+      - name: permission
+        in: body
+        required: true
+        description: The permission to add
+        schema:
+          "$ref": "#/definitions/Permission"
+      responses:
+        '201':
+          description: Null response
+        default:
+          description: unexpected error
+          schema:
+            "$ref": "#/definitions/Error"
+  "/permissions/user/{user}":
+    get:
+      summary: List the user's direct permissions (not via roles).
+      operationId: listUserPermissions
+      tags:
+      - users
+        permissions
+      security:
+      - BasicAuth: []
+      parameters:
+      - name: user
+        in: path
+        required: true
+        description: The name of the user whose permissions should be listed
+        type: string
+      responses:
+        '200':
+          description: The user's permissions
+          schema:
+            "$ref": "#/definitions/Permissions"  
+        default:
+          description: unexpected error
+          schema:
+            "$ref": "#/definitions/Error"
+    put:
+      summary: Add a permission to a user.
+      operationId: addUserPermission
+      tags:
+      - users
+        permissions
+      security:
+      - BasicAuth: []
+      consumes:
+      - application/json
+      parameters:
+      - name: user
+        in: path
+        required: true
+        description: The user to add the permission to
+        type: string
+      - name: permission
+        in: body
+        required: true
+        description: The permission to add
+        schema:
+          "$ref": "#/definitions/Permission"
+      responses:
+        '201':
+          description: Null response
+        default:
+          description: unexpected error
+          schema:
+            "$ref": "#/definitions/Error"
+  "/permissions/role/{role}/delete":
+    post:
+      summary: Remove a permission from a role.
+      operationId: removeRolePermission
+      tags:
+      - roles
+        permissions
+      security:
+      - BasicAuth: []
+      consumes:
+      - application/json
+      parameters:
+      - name: role
+        in: path
+        required: true
+        description: The role to remove the permission from
+        type: string
+      - name: permission
+        in: body
+        required: true
+        description: The permission to remove
+        schema:
+          "$ref": "#/definitions/Permission"
+      responses:
+        '201':
+          description: Null response
+        default:
+          description: unexpected error
+          schema:
+            "$ref": "#/definitions/Error"
+  "/permissions/user/{user}/delete":
+    post:
+      summary: Remove a permission from a user.
+      operationId: removeUserPermission
+      tags:
+      - users
+        permissions
+      security:
+      - BasicAuth: []
+      consumes:
+      - application/json
+      parameters:
+      - name: user
+        in: path
+        required: true
+        description: The user to remove the permission from
+        type: string
+      - name: permission
+        in: body
+        required: true
+        description: The permission to remove
+        schema:
+          "$ref": "#/definitions/Permission"
+      responses:
+        '201':
+          description: Null response
+        default:
+          description: unexpected error
+          schema:
+            "$ref": "#/definitions/Error"
+  "/permissions/effective/user/{user}":
+    get:
+      summary: List the user's effective permissions (all permissions).
+      operationId: listEffectivePermissions
+      tags:
+      - users
+        permissions
+      security:
+      - BasicAuth: []
+      parameters:
+      - name: user
+        in: path
+        required: true
+        description: The name of the user whose permissions should be listed
+        type: string
+      responses:
+        '200':
+          description: The user's permissions
+          schema:
+            "$ref": "#/definitions/Permissions"  
+        default:
+          description: unexpected error
+          schema:
+            "$ref": "#/definitions/Error"
+definitions:
+  Enabled:
+    required:
+    - enabled
+    properties:
+      enabled:
+        type: boolean
+  Error:
+    required:
+    - code
+    - message
+    properties:
+      code:
+        type: integer
+        format: int32
+      message:
+        type: string
+  Permission:
+    required:
+    - action
+    - resource_type
+    - resource
+    properties:
+      action:
+        type: string
+      resource_type:
+        type: string
+      resource:
+        type: array
+        items:
+          type: string
+  Permissions:
+    required:
+    - permissions
+    properties:
+      permissions:
+        type: array
+        items:
+          "$ref": "#/definitions/Permission"  
+  Password:
+    required:
+    - password
+    properties:
+      password:
+        type: string
+  Rolename:
+    required:
+    - rolename
+    properties:
+      rolename:
+        type: string
+  Roles:
+    required:
+    - roles
+    properties:
+      roles:
+        type: array
+        items:
+          type: string
+  Superuser:
+    required:
+    - superuser
+    properties:
+      enabled:
+        type: boolean
+  User:
+    required:
+    - username
+    - superuser
+    - password
+    properties:
+      username:
+        type: string
+      superuser:
+        type: boolean
+      password:
+        type: array
+        items:
+          type: string
+  Users:
+    required:
+    - users
+    properties:
+      users:
+        type: array
+        items:
+          type: string
