@@ -15,3 +15,23 @@ type StardogCondition struct {
 }
 
 type StardogConditionType string
+
+type StardogConditionMap map[StardogConditionType]StardogCondition
+
+const (
+	// StardogReady tracks if the Stardog has been successfully reconciled.
+	StardogReady StardogConditionType = "Ready"
+	// StardogErrored is given when the object could not be reconciled with Stardog.
+	StardogErrored StardogConditionType = "Errored"
+	// StardogInvalid is given when the the object contains invalid properties. The object will not be further
+	// reconciled until the issue is fixed.
+	StardogInvalid StardogConditionType = "Invalid"
+	// StardogTerminating is given when the the Stardog resource is to be deleted but the object's finalizers cannot
+	// be cleared for a reason.
+	StardogTerminating StardogConditionType = "StardogTerminating"
+
+	ReasonFailed      = "SynchronizationFailed"
+	ReasonSucceeded   = "SynchronizationSucceeded"
+	ReasonSpecInvalid = "InvalidSpec"
+	ReasonTerminating = "StardogTerminating"
+)

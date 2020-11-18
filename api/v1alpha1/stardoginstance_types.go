@@ -14,10 +14,12 @@ import (
 
 // StardogInstanceSpec defines the desired state of StardogInstance
 type StardogInstanceSpec struct {
-	// ServerUrl describes the url of the Stardog Instace
+	// ServerUrl describes the url of the Stardog Instance
+	// +kubebuilder:validation:Required
 	ServerUrl string `json:"serverUrl,omitempty"`
 	// AdminCredentials references the credentials that gives administrative access to the Stardog instance.
 	// This is used by the Operator to make changes in the roles, permissions and users.
+	// +kubebuilder:validation:Required
 	AdminCredentials StardogUserCredentialsSpec `json:"adminCredentials,omitempty"`
 }
 
