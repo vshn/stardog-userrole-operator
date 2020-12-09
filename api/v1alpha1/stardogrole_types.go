@@ -27,10 +27,13 @@ import (
 type StardogRoleSpec struct {
 	// RoleName describes (overrides) the name of a role that will be maintained in a Stardog instance.
 	// Defaults to .metadata.name.
+	// +kubebuilder:validation:Optional
 	RoleName string `json:"roleName,omitempty"`
 	// StardogInstanceRef references the StardogInstance object in which the role is maintained.
+	// +kubebuilder:validation:Required
 	StardogInstanceRef string `json:"stardogInstanceRef,omitempty"`
 	// Permissions lists the permissions assigned to a role
+	// +kubebuilder:validation:Optional
 	Permissions []StardogPermissionSpec `json:"permissions,omitempty"`
 }
 
@@ -38,11 +41,14 @@ type StardogRoleSpec struct {
 type StardogPermissionSpec struct {
 	// Action describes the action a specific permission is assigned to
 	// +kubebuilder:validation:Enum=ALL;CREATE;DELETE;READ;WRITE;GRANT;REVOKE;EXECUTE
+	// +kubebuilder:validation:Required
 	Action string `json:"action,omitempty"`
 	// ResourceType describes the type of resource a specific permission is assigned to
 	// +kubebuilder:validation:Enum=DB;USER;ROLE;ADMIN;METADATA;NAMEDGRAPH;VIRTUALGRAPH;ICVCONSTRAINTS
+	// +kubebuilder:validation:Required
 	ResourceType string `json:"resourceType,omitempty"`
 	// Resources is a list of permission objects that get each targeted by the action and resource type properties
+	// +kubebuilder:validation:Required
 	Resources []string `json:"resources,omitempty"`
 }
 

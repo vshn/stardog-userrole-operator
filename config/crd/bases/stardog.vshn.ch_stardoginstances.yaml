@@ -52,7 +52,7 @@ spec:
                   type: string
               type: object
             serverUrl:
-              description: ServerUrl describes the url of the Stardog Instace
+              description: ServerUrl describes the url of the Stardog Instance
               type: string
           type: object
         status:

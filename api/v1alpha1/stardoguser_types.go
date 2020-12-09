@@ -26,10 +26,13 @@ import (
 // StardogUserSpec defines the desired state of StardogUser
 type StardogUserSpec struct {
 	// StardogInstanceRef references a StardogInstance object.
+	// +kubebuilder:validation:Required
 	StardogInstanceRef string `json:"stardogInstanceRef,omitempty"`
 	// StardogUserCredentialsSpec describes the credentials of a Stardog user
+	// +kubebuilder:validation:Required
 	Credentials StardogUserCredentialsSpec `json:"credentials,omitempty"`
 	// Roles describe a list of StardogRoles assigned to a Stardog user. The names are referring the StardogRole metadata names, not the role name that is supposed to be in Stardog.
+	// +kubebuilder:validation:Optional
 	Roles []string `json:"roles,omitempty"`
 }
 
@@ -39,6 +42,7 @@ type StardogUserCredentialsSpec struct {
 	// Defaults to .metadata.namespace.
 	Namespace string `json:"namespace,omitempty"`
 	// SecretRef references the v1/Secret name which contains the "username" and "password" keys.
+	// +kubebuilder:validation:Required
 	SecretRef string `json:"secretRef,omitempty"`
 }
 
