@@ -67,8 +67,13 @@ func Test_initStardogClientFromRef(t *testing.T) {
 				stardogClient: stardogClient,
 			}
 
+			base64.StdEncoding.EncodeToString([]byte(username))
 			if tt.err == nil {
-				stardogClient.EXPECT().SetConnection(serverURL, username, password)
+				stardogClient.EXPECT().SetConnection(
+					serverURL,
+					base64.StdEncoding.EncodeToString([]byte(username)),
+					base64.StdEncoding.EncodeToString([]byte(password)),
+				)
 			}
 
 			err = rc.initStardogClientFromRef(fakeKubeClient, stardogInstanceName)
@@ -102,8 +107,8 @@ func Test_getCredentials(t *testing.T) {
 				SecretRef: secretName,
 			},
 			secret: *createFullSecret(namespace, secretName, username, password),
-			user:   username,
-			pass:   password,
+			user:   base64.StdEncoding.EncodeToString([]byte(username)),
+			pass:   base64.StdEncoding.EncodeToString([]byte(password)),
 			err:    nil,
 		},
 		{

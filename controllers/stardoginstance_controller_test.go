@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	testing2 "github.com/go-logr/logr/testing"
 	"github.com/golang/mock/gomock"
@@ -9,7 +10,6 @@ import (
 	"github.com/vshn/stardog-userrole-operator/api/v1alpha1"
 	"github.com/vshn/stardog-userrole-operator/stardogrest"
 	stardogrestapi "github.com/vshn/stardog-userrole-operator/stardogrest/mocks"
-	stardogrestapi2 "github.com/vshn/stardog-userrole-operator/stardogrest/stardogrestapi"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -70,9 +70,10 @@ func Test_deleteStardogInstance(t *testing.T) {
 				Scheme:            scheme.Scheme,
 				Client:            fakeKubeClient,
 			}
-			stardogClient.EXPECT().SetConnection(serverURL, username, password)
-			stardogClient.EXPECT().ListUsers(context.Background()).Return(stardogrest.Users{Users: &[]string{}}, nil)
-			stardogClient.EXPECT().ListRoles(context.Background()).Return(stardogrest.Roles{Roles: &[]string{}}, nil)
+			stardogClient.EXPECT().SetConnection(
+				serverURL,
+				base64.StdEncoding.EncodeToString([]byte(username)),
+				base64.StdEncoding.EncodeToString([]byte(password)))
 			err = r.deleteStardogInstance(&tt.sir)
 
 			actualInstance := v1alpha1.StardogInstance{}
@@ -89,86 +90,163 @@ func Test_deleteStardogInstance(t *testing.T) {
 
 func Test_userFinalize(t *testing.T) {
 
+	stardogInstanceRef := "instance-test"
+	stardogUser := "user-test"
+	stardogUser_2 := "user-test-2"
+	secretNameUser := "user-secret-test"
+	namespace := "namespace-test"
+	stardogInstanceName := "instance-test"
+	secretName := "secret-test"
+	serverURL := "url-test"
 	ctx := context.Background()
+	roles := []string{"role1", "role2"}
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	stardogClient := stardogrestapi.NewMockExtendedBaseClientAPI(mockCtrl)
 
 	tests := []struct {
-		name          string
-		conditionUser func(stardogrestapi2.ExtendedBaseClientAPI)
-		err           error
+		name     string
+		userList v1alpha1.StardogUserList
+		sir      StardogInstanceReconciliation
+		err      error
 	}{
 		{
 			name: "GivenUserFinalizer_WhenThereAreNoUsers_ThenDoNotReturnAnyError",
-			conditionUser: func(stardogrestapi2.ExtendedBaseClientAPI) {
-				stardogClient.EXPECT().ListUsers(ctx).Return(stardogrest.Users{Users: &[]string{}}, nil)
+			userList: v1alpha1.StardogUserList{
+				Items: []v1alpha1.StardogUser{},
+			},
+			sir: StardogInstanceReconciliation{
+				reconciliationContext: &ReconciliationContext{
+					context:       ctx,
+					conditions:    make(v1alpha1.StardogConditionMap),
+					namespace:     namespace,
+					stardogClient: stardogClient,
+				},
+				resource: createStardogInstanceWithFinalizers(namespace, stardogInstanceName, secretName, serverURL),
 			},
 			err: nil,
 		},
 		{
 			name: "GivenUserFinalizer_WhenThereAreUsers_ThenRaiseError",
-			conditionUser: func(stardogrestapi2.ExtendedBaseClientAPI) {
-				stardogClient.EXPECT().ListUsers(ctx).Return(stardogrest.Users{Users: &[]string{"pippo"}}, nil)
+			userList: v1alpha1.StardogUserList{
+				Items: []v1alpha1.StardogUser{
+					*createStardogUser(namespace, stardogUser, stardogInstanceRef, secretNameUser, roles),
+					*createStardogUser(namespace, stardogUser_2, stardogInstanceRef, secretNameUser, roles),
+				},
 			},
-			err: errors.New("cannot delete StardogInstance, found 1 users"),
+			sir: StardogInstanceReconciliation{
+				reconciliationContext: &ReconciliationContext{
+					context:       ctx,
+					conditions:    make(v1alpha1.StardogConditionMap),
+					namespace:     namespace,
+					stardogClient: stardogClient,
+				},
+				resource: createStardogInstanceWithFinalizers(namespace, stardogInstanceName, secretName, serverURL),
+			},
+			err: errors.New("cannot delete StardogInstance, found [  user-test user-test-2] user CRDs"),
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			fakeKubeClient, err := createKubeFakeClient(&tt.userList)
+			assert.NoError(t, err)
 			r := StardogInstanceReconciler{
 				Log:               testing2.TestLogger{},
 				ReconcileInterval: time.Duration(1),
 				Scheme:            scheme.Scheme,
-				Client:            nil,
+				Client:            fakeKubeClient,
 			}
-			tt.conditionUser(stardogClient)
-			err := r.userFinalizer(stardogClient, ctx)
-
+			err = r.userFinalizer(&tt.sir)
 			assert.Equal(t, tt.err, err)
 		})
 	}
 }
 
 func Test_roleFinalize(t *testing.T) {
+
+	namespace := "namespace-test"
+	stardogInstanceRef := "instance-test"
+	stardogRoleName := "role-test"
+	stardogRoleName2 := "role-test-2"
+	secretName := "secret-test"
+	action1 := "READ"
+	action2 := "WRITE"
+	resourceType1 := "DB"
+	resourceType2 := "*"
+	serverURL := "https://stardog-test.com"
+	resources1 := []string{"Database1", "Database2"}
+	resources2 := []string{"Graph1", "Database2"}
+	permissionSpec1 := v1alpha1.StardogPermissionSpec{
+		Action:       action1,
+		ResourceType: resourceType1,
+		Resources:    resources1,
+	}
+	permissionSpec2 := v1alpha1.StardogPermissionSpec{
+		Action:       action2,
+		ResourceType: resourceType2,
+		Resources:    resources2,
+	}
+
 	ctx := context.Background()
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	stardogClient := stardogrestapi.NewMockExtendedBaseClientAPI(mockCtrl)
 
 	tests := []struct {
-		name          string
-		conditionRole func(stardogrestapi2.ExtendedBaseClientAPI)
-		err           error
+		name     string
+		userList v1alpha1.StardogRoleList
+		sir      StardogInstanceReconciliation
+		err      error
 	}{
 		{
 			name: "GivenRoleFinalizer_WhenThereAreNoRoles_ThenDoNotReturnAnyError",
-			conditionRole: func(stardogrestapi2.ExtendedBaseClientAPI) {
-				stardogClient.EXPECT().ListRoles(ctx).Return(stardogrest.Roles{Roles: &[]string{}}, nil)
+			userList: v1alpha1.StardogRoleList{
+				Items: []v1alpha1.StardogRole{},
+			},
+			sir: StardogInstanceReconciliation{
+				reconciliationContext: &ReconciliationContext{
+					context:       ctx,
+					conditions:    make(v1alpha1.StardogConditionMap),
+					namespace:     namespace,
+					stardogClient: stardogClient,
+				},
+				resource: createStardogInstanceWithFinalizers(namespace, stardogInstanceRef, secretName, serverURL),
 			},
 			err: nil,
 		},
 		{
 			name: "GivenRoleFinalizer_WhenThereAreRoles_ThenRaiseError",
-			conditionRole: func(stardogrestapi2.ExtendedBaseClientAPI) {
-				stardogClient.EXPECT().ListRoles(ctx).Return(stardogrest.Roles{Roles: &[]string{"role1"}}, nil)
+			userList: v1alpha1.StardogRoleList{
+				Items: []v1alpha1.StardogRole{
+					*createStardogRole(namespace, stardogRoleName, stardogInstanceRef, []v1alpha1.StardogPermissionSpec{permissionSpec1, permissionSpec2}),
+					*createStardogRole(namespace, stardogRoleName2, stardogInstanceRef, []v1alpha1.StardogPermissionSpec{permissionSpec1}),
+				},
 			},
-			err: errors.New("cannot delete StardogInstance, found 1 remaining role(s)"),
+			sir: StardogInstanceReconciliation{
+				reconciliationContext: &ReconciliationContext{
+					context:       ctx,
+					conditions:    make(v1alpha1.StardogConditionMap),
+					namespace:     namespace,
+					stardogClient: stardogClient,
+				},
+				resource: createStardogInstanceWithFinalizers(namespace, stardogInstanceRef, secretName, serverURL),
+			},
+			err: errors.New("cannot delete StardogInstance, found [  role-test role-test-2] role CRDs"),
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			fakeKubeClient, err := createKubeFakeClient(&tt.userList)
+			assert.NoError(t, err)
 			r := StardogInstanceReconciler{
 				Log:               testing2.TestLogger{},
 				ReconcileInterval: time.Duration(1),
 				Scheme:            scheme.Scheme,
-				Client:            nil,
+				Client:            fakeKubeClient,
 			}
-			tt.conditionRole(stardogClient)
-			err := r.roleFinalizer(stardogClient, ctx)
-
+			err = r.roleFinalizer(&tt.sir)
 			assert.Equal(t, tt.err, err)
 		})
 	}
@@ -258,6 +336,7 @@ func Test_validateConnection(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	stardogClient := stardogrestapi.NewMockExtendedBaseClientAPI(mockCtrl)
+	encodedUser := base64.StdEncoding.EncodeToString([]byte(username))
 
 	tests := []struct {
 		name            string
@@ -308,8 +387,11 @@ func Test_validateConnection(t *testing.T) {
 				Scheme:            scheme.Scheme,
 				Client:            fakeKubeClient,
 			}
-			stardogClient.EXPECT().SetConnection(serverURL, username, password)
-			stardogClient.EXPECT().IsEnabled(context.Background(), username).Return(stardogrest.Enabled{}, tt.err)
+			stardogClient.EXPECT().SetConnection(
+				serverURL,
+				encodedUser,
+				base64.StdEncoding.EncodeToString([]byte(password)))
+			stardogClient.EXPECT().IsEnabled(context.Background(), encodedUser).Return(stardogrest.Enabled{}, tt.err)
 			err = r.validateConnection(&tt.sir)
 
 			assert.Equal(t, tt.err, err)

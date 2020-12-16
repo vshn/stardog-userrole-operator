@@ -10,3 +10,16 @@ subjects:
 - kind: ServiceAccount
   name: default
   namespace: system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: leader-election-clusterrolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: leader-election-clusterrole
+subjects:
+  - kind: ServiceAccount
+    name: default
+    namespace: system

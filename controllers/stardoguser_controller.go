@@ -23,6 +23,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/errors"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -75,38 +76,38 @@ func (r *StardogUserReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error)
 
 	isStardogUserMarkedToBeDeleted := stardogUser.GetDeletionTimestamp() != nil
 	if isStardogUserMarkedToBeDeleted {
-		if r.deleteStardogUser(sur) != nil {
+		if err = r.deleteStardogUser(sur); err != nil {
 			rc.SetStatusCondition(createStatusConditionTerminating(err))
 			rc.SetStatusCondition(createStatusConditionReady(false, "StardogInstance cannot be deleted"))
-			return ctrl.Result{Requeue: true}, r.updateStatus(sur)
+			return ctrl.Result{Requeue: true, RequeueAfter: r.ReconcileInterval}, r.updateStatus(sur)
 		}
-		return ctrl.Result{Requeue: false}, r.updateStatus(sur)
+		return ctrl.Result{Requeue: false}, nil
 	}
 
-	if r.validateSpecification(&sur.resource.Spec) != nil {
+	if err = r.validateSpecification(&sur.resource.Spec); err != nil {
 		rc.SetStatusCondition(createStatusConditionInvalid(err))
 		rc.SetStatusCondition(createStatusConditionReady(false, "Specification cannot be validated"))
-		return ctrl.Result{}, r.updateStatus(sur)
+		return ctrl.Result{Requeue: false}, r.updateStatus(sur)
 	}
 	rc.SetStatusIfExisting(StardogInvalid, v1.ConditionFalse)
 
-	if r.syncUser(sur) != nil {
+	if err = r.syncUser(sur); err != nil {
 		rc.SetStatusCondition(createStatusConditionErrored(err))
 		rc.SetStatusCondition(createStatusConditionReady(false, "Synchronization failed"))
-		return ctrl.Result{}, r.updateStatus(sur)
+		return ctrl.Result{Requeue: false}, r.updateStatus(sur)
 	}
-	rc.SetStatusIfExisting(StardogErrored, v1.ConditionFalse)
 
 	if missingAtLeastOne(sur.resource.GetFinalizers(), userFinalizer) {
 		r.Log.V(1).Info("adding Finalizers for the StardogUser")
 		controllerutil.AddFinalizer(sur.resource, userFinalizer)
 	}
 
-	if r.Update(sur.reconciliationContext.context, sur.resource) != nil {
+	if err = r.Update(sur.reconciliationContext.context, sur.resource); err != nil {
 		rc.SetStatusCondition(createStatusConditionErrored(err))
 		rc.SetStatusCondition(createStatusConditionReady(false, "Finalizer cannot be added"))
-		return ctrl.Result{Requeue: true}, r.updateStatus(sur)
+		return ctrl.Result{Requeue: true, RequeueAfter: r.ReconcileInterval}, r.updateStatus(sur)
 	}
+	rc.SetStatusIfExisting(StardogErrored, v1.ConditionFalse)
 	rc.SetStatusCondition(createStatusConditionReady(true, "Synchronized"))
 	return ctrl.Result{Requeue: false}, r.updateStatus(sur)
 }
@@ -114,6 +115,7 @@ func (r *StardogUserReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error)
 func (r *StardogUserReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&StardogUser{}).
+		WithEventFilter(predicate.GenerationChangedPredicate{}).
 		Complete(r)
 }
 
@@ -186,9 +188,11 @@ func (r *StardogUserReconciler) syncUser(sur *StardogUserReconciliation) error {
 		return err
 	}
 
+	superuser := false
 	user := stardogrest.User{
-		Username: &username,
-		Password: &[]string{password},
+		Username:  &username,
+		Password:  &[]string{password},
+		Superuser: &superuser,
 	}
 	stardogClient := rc.stardogClient
 	usersObject, err := stardogClient.ListUsers(ctx)

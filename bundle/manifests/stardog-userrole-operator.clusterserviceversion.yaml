@@ -1,0 +1,233 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: ClusterServiceVersion
+metadata:
+  annotations:
+    alm-examples: |-
+      [
+        {
+          "apiVersion": "stardog.vshn.ch/v1alpha1",
+          "kind": "StardogRole",
+          "metadata": {
+            "name": "stardogrole-sample"
+          },
+          "spec": {
+            "foo": "bar"
+          }
+        },
+        {
+          "apiVersion": "stardog.vshn.ch/v1alpha1",
+          "kind": "StardogUser",
+          "metadata": {
+            "name": "stardoguser-sample"
+          },
+          "spec": {
+            "foo": "bar"
+          }
+        }
+      ]
+    capabilities: Basic Install
+    operators.operatorframework.io/builder: operator-sdk-v1.2.0
+    operators.operatorframework.io/project_layout: go.kubebuilder.io/v2
+  name: stardog-userrole-operator.v0.0.1
+  namespace: placeholder
+spec:
+  apiservicedefinitions: {}
+  customresourcedefinitions:
+    owned:
+    - description: StardogInstance contains information about a Stardog server or cluster.
+      displayName: Stardog Instance
+      kind: StardogInstance
+      name: stardoginstances.stardog.vshn.ch
+      version: v1alpha1
+    - description: StardogRole is the Schema for the stardogroles API
+      displayName: Stardog Role
+      kind: StardogRole
+      name: stardogroles.stardog.vshn.ch
+      version: v1alpha1
+    - description: StardogUser is the Schema for the stardogusers API
+      displayName: Stardog User
+      kind: StardogUser
+      name: stardogusers.stardog.vshn.ch
+      version: v1alpha1
+  description: Access management of Stardog DBs
+  displayName: stardog-userrole-operator
+  icon:
+  - base64data: ""
+    mediatype: ""
+  install:
+    spec:
+      clusterPermissions:
+      - rules:
+        - apiGroups:
+          - stardog.vshn.ch
+          resources:
+          - stardoginstances
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - stardog.vshn.ch
+          resources:
+          - stardoginstances/status
+          verbs:
+          - get
+          - patch
+          - update
+        - apiGroups:
+          - stardog.vshn.ch
+          resources:
+          - stardogroles
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - stardog.vshn.ch
+          resources:
+          - stardogroles/status
+          verbs:
+          - get
+          - patch
+          - update
+        - apiGroups:
+          - stardog.vshn.ch
+          resources:
+          - stardogusers
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - stardog.vshn.ch
+          resources:
+          - stardogusers/status
+          verbs:
+          - get
+          - patch
+          - update
+        - apiGroups:
+          - authentication.k8s.io
+          resources:
+          - tokenreviews
+          verbs:
+          - create
+        - apiGroups:
+          - authorization.k8s.io
+          resources:
+          - subjectaccessreviews
+          verbs:
+          - create
+        serviceAccountName: default
+      deployments:
+      - name: stardog-userrole-operator-controller-manager
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              control-plane: controller-manager
+          strategy: {}
+          template:
+            metadata:
+              labels:
+                control-plane: controller-manager
+            spec:
+              containers:
+              - args:
+                - --secure-listen-address=0.0.0.0:8443
+                - --upstream=http://127.0.0.1:8080/
+                - --logtostderr=true
+                - --v=10
+                image: gcr.io/kubebuilder/kube-rbac-proxy:v0.5.0
+                name: kube-rbac-proxy
+                ports:
+                - containerPort: 8443
+                  name: https
+                resources: {}
+              - args:
+                - --metrics-addr=127.0.0.1:8080
+                - --enable-leader-election
+                image: vshn/stardog-userrole-operator:latest
+                name: manager
+                resources:
+                  limits:
+                    cpu: 100m
+                    memory: 100Mi
+                  requests:
+                    cpu: 30m
+                    memory: 20Mi
+              terminationGracePeriodSeconds: 10
+      permissions:
+      - rules:
+        - apiGroups:
+          - ""
+          resources:
+          - configmaps
+          verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        - apiGroups:
+          - ""
+          resources:
+          - configmaps/status
+          verbs:
+          - get
+          - update
+          - patch
+        - apiGroups:
+          - ""
+          resources:
+          - events
+          verbs:
+          - create
+          - patch
+        - apiGroups:
+          - ""
+          resources:
+          - secrets
+          verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        serviceAccountName: default
+    strategy: deployment
+  installModes:
+  - supported: false
+    type: OwnNamespace
+  - supported: false
+    type: SingleNamespace
+  - supported: false
+    type: MultiNamespace
+  - supported: true
+    type: AllNamespaces
+  keywords:
+  - user
+  - role
+  - stardog
+  links:
+  - name: Stardog Userrole Operator
+    url: https://stardog-userrole-operator.domain
+  maturity: alpha
+  provider:
+    name: vshn
+    url: vshn.ch
+  version: 0.0.1

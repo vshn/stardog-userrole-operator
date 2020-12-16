@@ -1,13 +1,13 @@
 package controllers
 
 import (
-	"encoding/base64"
 	"fmt"
 	. "github.com/vshn/stardog-userrole-operator/api/v1alpha1"
 	"github.com/vshn/stardog-userrole-operator/stardogrest"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"reflect"
+	"strings"
 )
 
 // createStatusConditionReady is a shortcut for adding a StardogReady condition.
@@ -68,16 +68,11 @@ func getSecretData(secret v1.Secret, value string) (string, error) {
 		return secret.StringData[value], nil
 	}
 
-	decodedValue, err := base64.StdEncoding.DecodeString(string(secret.Data[value]))
-	if err != nil {
-		return "", fmt.Errorf(".data.%s in the Secret %s/%s cannot be decoded", value, secret.Namespace, secret.Name)
-	}
-
-	return string(decodedValue), nil
+	return string(secret.Data[value]), nil
 }
 
 func mergeWithExistingConditions(existing []StardogCondition, new StardogConditionMap) (merged []StardogCondition) {
-	exMap := mapConditionsToType(existing)
+	exMap := mapConditionsToTypeAndDisableStatus(existing)
 	for _, condition := range new {
 		exMap[condition.Type] = condition
 	}
@@ -87,9 +82,10 @@ func mergeWithExistingConditions(existing []StardogCondition, new StardogConditi
 	return merged
 }
 
-func mapConditionsToType(conditions []StardogCondition) (m StardogConditionMap) {
+func mapConditionsToTypeAndDisableStatus(conditions []StardogCondition) (m StardogConditionMap) {
 	m = make(StardogConditionMap)
 	for _, condition := range conditions {
+		condition.Status = v1.ConditionFalse
 		m[condition.Type] = condition
 	}
 	return m
@@ -139,7 +135,7 @@ func equals(permissionTypeA stardogrest.Permission, permissionTypeB StardogPermi
 		}
 		action = true
 	} else {
-		action = *permissionTypeA.Action == permissionTypeB.Action
+		action = strings.EqualFold(*permissionTypeA.Action, permissionTypeB.Action)
 	}
 
 	var resourceType bool
@@ -149,7 +145,7 @@ func equals(permissionTypeA stardogrest.Permission, permissionTypeB StardogPermi
 		}
 		resourceType = true
 	} else {
-		resourceType = *permissionTypeA.ResourceType == permissionTypeB.ResourceType
+		resourceType = strings.EqualFold(*permissionTypeA.ResourceType, permissionTypeB.ResourceType)
 	}
 
 	var resources bool

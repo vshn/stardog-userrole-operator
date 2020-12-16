@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"github.com/Azure/go-autorest/autorest"
 	testing2 "github.com/go-logr/logr/testing"
@@ -93,7 +94,7 @@ func Test_deleteStardogUser(t *testing.T) {
 					Return(autorest.Response{}, errors.New("cannot remove user"))
 			},
 			expectedFinalizers: []string{userFinalizer},
-			err:                errors.New("cannot remove Stardog user namespace-test/user: cannot remove user"),
+			err:                errors.New("cannot remove Stardog user namespace-test/dXNlcg==: cannot remove user"),
 		},
 	}
 
@@ -197,6 +198,7 @@ func Test_syncUser(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	stardogClient := stardogrestapi.NewMockExtendedBaseClientAPI(mockCtrl)
+	encodedUser := base64.StdEncoding.EncodeToString([]byte(usernameUser))
 
 	tests := []struct {
 		name            string
@@ -227,7 +229,10 @@ func Test_syncUser(t *testing.T) {
 				func(stardogrestapi2.ExtendedBaseClientAPI) {
 					stardogClient.
 						EXPECT().
-						SetConnection(serverURL, usernameAdmin, passwordAdmin).
+						SetConnection(
+							serverURL,
+							base64.StdEncoding.EncodeToString([]byte(usernameAdmin)),
+							base64.StdEncoding.EncodeToString([]byte(passwordAdmin))).
 						Times(1)
 				},
 				func(stardogrestapi2.ExtendedBaseClientAPI) {
@@ -240,26 +245,26 @@ func Test_syncUser(t *testing.T) {
 				func(stardogrestapi2.ExtendedBaseClientAPI) {
 					stardogClient.
 						EXPECT().
-						CreateUser(ctx, gomock.Eq(&stardogrest.User{Username: &usernameUser, Password: &[]string{passwordUser}})).
+						CreateUser(ctx, gomock.Any()).
 						Times(1)
 				},
 				func(stardogrestapi2.ExtendedBaseClientAPI) {
 					stardogClient.
 						EXPECT().
-						ListUserRoles(ctx, usernameUser).
+						ListUserRoles(ctx, encodedUser).
 						Return(stardogrest.Roles{Roles: &[]string{}}, nil).
 						Times(1)
 				},
 				func(stardogrestapi2.ExtendedBaseClientAPI) {
 					stardogClient.
 						EXPECT().
-						AddRole(ctx, usernameUser, stardogrest.Rolename{Rolename: &role1}).
+						AddRole(ctx, encodedUser, stardogrest.Rolename{Rolename: &role1}).
 						Times(1)
 				},
 				func(stardogrestapi2.ExtendedBaseClientAPI) {
 					stardogClient.
 						EXPECT().
-						AddRole(ctx, usernameUser, stardogrest.Rolename{Rolename: &role2}).
+						AddRole(ctx, encodedUser, stardogrest.Rolename{Rolename: &role2}).
 						Times(1)
 				},
 			},
@@ -284,7 +289,10 @@ func Test_syncUser(t *testing.T) {
 				func(stardogrestapi2.ExtendedBaseClientAPI) {
 					stardogClient.
 						EXPECT().
-						SetConnection(serverURL, usernameAdmin, passwordAdmin).
+						SetConnection(
+							serverURL,
+							base64.StdEncoding.EncodeToString([]byte(usernameAdmin)),
+							base64.StdEncoding.EncodeToString([]byte(passwordAdmin))).
 						Times(1)
 				},
 				func(stardogrestapi2.ExtendedBaseClientAPI) {
@@ -297,26 +305,26 @@ func Test_syncUser(t *testing.T) {
 				func(stardogrestapi2.ExtendedBaseClientAPI) {
 					stardogClient.
 						EXPECT().
-						CreateUser(ctx, gomock.Eq(&stardogrest.User{Username: &usernameUser, Password: &[]string{passwordUser}})).
+						CreateUser(ctx, gomock.Any()).
 						Times(1)
 				},
 				func(stardogrestapi2.ExtendedBaseClientAPI) {
 					stardogClient.
 						EXPECT().
-						ListUserRoles(ctx, usernameUser).
+						ListUserRoles(ctx, encodedUser).
 						Return(stardogrest.Roles{Roles: &[]string{}}, nil).
 						Times(1)
 				},
 				func(stardogrestapi2.ExtendedBaseClientAPI) {
 					stardogClient.
 						EXPECT().
-						AddRole(ctx, usernameUser, stardogrest.Rolename{Rolename: &role1}).
+						AddRole(ctx, encodedUser, stardogrest.Rolename{Rolename: &role1}).
 						Times(1)
 				},
 				func(stardogrestapi2.ExtendedBaseClientAPI) {
 					stardogClient.
 						EXPECT().
-						AddRole(ctx, usernameUser, stardogrest.Rolename{Rolename: &role2}).
+						AddRole(ctx, encodedUser, stardogrest.Rolename{Rolename: &role2}).
 						Times(1)
 				},
 			},
@@ -341,39 +349,42 @@ func Test_syncUser(t *testing.T) {
 				func(stardogrestapi2.ExtendedBaseClientAPI) {
 					stardogClient.
 						EXPECT().
-						SetConnection(serverURL, usernameAdmin, passwordAdmin).
+						SetConnection(
+							serverURL,
+							base64.StdEncoding.EncodeToString([]byte(usernameAdmin)),
+							base64.StdEncoding.EncodeToString([]byte(passwordAdmin))).
 						Times(1)
 				},
 				func(stardogrestapi2.ExtendedBaseClientAPI) {
 					stardogClient.
 						EXPECT().
 						ListUsers(ctx).
-						Return(stardogrest.Users{Users: &[]string{usernameUser}}, nil).
+						Return(stardogrest.Users{Users: &[]string{encodedUser}}, nil).
 						Times(1)
 				},
 				func(stardogrestapi2.ExtendedBaseClientAPI) {
 					stardogClient.
 						EXPECT().
-						ChangePassword(ctx, usernameUser, stardogrest.Password{Password: &passwordUser}).
+						ChangePassword(ctx, encodedUser, gomock.Any()).
 						Times(1)
 				},
 				func(stardogrestapi2.ExtendedBaseClientAPI) {
 					stardogClient.
 						EXPECT().
-						ListUserRoles(ctx, usernameUser).
+						ListUserRoles(ctx, encodedUser).
 						Return(stardogrest.Roles{Roles: &roles1}, nil).
 						Times(1)
 				},
 				func(stardogrestapi2.ExtendedBaseClientAPI) {
 					stardogClient.
 						EXPECT().
-						AddRole(ctx, usernameUser, stardogrest.Rolename{Rolename: &role3}).
+						AddRole(ctx, encodedUser, stardogrest.Rolename{Rolename: &role3}).
 						Times(1)
 				},
 				func(stardogrestapi2.ExtendedBaseClientAPI) {
 					stardogClient.
 						EXPECT().
-						RemoveRole(ctx, usernameUser, role1).
+						RemoveRole(ctx, encodedUser, role1).
 						Times(1)
 				},
 			},

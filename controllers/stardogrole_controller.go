@@ -23,6 +23,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/errors"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"strings"
 	"time"
 
@@ -76,37 +77,35 @@ func (r *StardogRoleReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error)
 
 	isStardogRoleMarkedToBeDeleted := stardogRole.GetDeletionTimestamp() != nil
 	if isStardogRoleMarkedToBeDeleted {
-		if r.deleteStardogRole(srr) != nil {
+		if err = r.deleteStardogRole(srr); err != nil {
 			rc.SetStatusCondition(createStatusConditionTerminating(err))
 			rc.SetStatusCondition(createStatusConditionReady(false, "StardogInstance cannot be deleted"))
-			return ctrl.Result{Requeue: true}, r.updateStatus(srr)
+			return ctrl.Result{Requeue: true, RequeueAfter: r.ReconcileInterval}, r.updateStatus(srr)
 		}
-		return ctrl.Result{Requeue: false}, r.updateStatus(srr)
+		return ctrl.Result{Requeue: false}, nil
 	}
 
-	if r.validateSpecification(srr.resource) != nil {
+	if err = r.validateSpecification(srr.resource); err != nil {
 		rc.SetStatusCondition(createStatusConditionInvalid(err))
 		rc.SetStatusCondition(createStatusConditionReady(false, "Specification cannot be validated"))
-		return ctrl.Result{}, r.updateStatus(srr)
+		return ctrl.Result{Requeue: false}, r.updateStatus(srr)
 	}
 	rc.SetStatusIfExisting(StardogInvalid, v1.ConditionFalse)
 
-	if r.syncRole(srr) != nil {
+	if err = r.syncRole(srr); err != nil {
 		rc.SetStatusCondition(createStatusConditionErrored(err))
 		rc.SetStatusCondition(createStatusConditionReady(false, "Synchronization failed"))
-		return ctrl.Result{}, r.updateStatus(srr)
+		return ctrl.Result{Requeue: false}, r.updateStatus(srr)
 	}
 	rc.SetStatusIfExisting(StardogErrored, v1.ConditionFalse)
 
-	if missingAtLeastOne(srr.resource.GetFinalizers(), roleFinalizer) {
-		r.Log.V(1).Info("adding Finalizer for the StardogRole")
-		controllerutil.AddFinalizer(srr.resource, roleFinalizer)
-	}
+	r.Log.V(1).Info("adding Finalizer for the StardogRole")
+	controllerutil.AddFinalizer(srr.resource, roleFinalizer)
 
-	if r.Update(srr.reconciliationContext.context, srr.resource) != nil {
+	if err = r.Update(srr.reconciliationContext.context, srr.resource); err != nil {
 		rc.SetStatusCondition(createStatusConditionErrored(err))
 		rc.SetStatusCondition(createStatusConditionReady(false, "Finalizer cannot be added"))
-		return ctrl.Result{Requeue: true}, r.updateStatus(srr)
+		return ctrl.Result{Requeue: true, RequeueAfter: r.ReconcileInterval}, r.updateStatus(srr)
 	}
 	rc.SetStatusCondition(createStatusConditionReady(true, "Synchronized"))
 	return ctrl.Result{Requeue: false}, r.updateStatus(srr)
@@ -153,6 +152,15 @@ func (r *StardogRoleReconciler) syncRole(srr *StardogRoleReconciliation) error {
 
 	var permissionErrors []error
 	permissions := spec.Permissions
+	for _, existingPermission := range existingPermissions {
+		if !containsStardogPermission(permissions, existingPermission) {
+			_, err := stardogClient.RemoveRolePermission(ctx, roleName, existingPermission)
+			if err != nil {
+				permissionErrors = append(permissionErrors, err)
+			}
+		}
+	}
+
 	for _, permission := range permissions {
 		if !containsOperatorPermission(existingPermissions, permission) {
 			_, err := stardogClient.AddRolePermission(ctx, roleName, stardogrest.Permission{
@@ -160,15 +168,6 @@ func (r *StardogRoleReconciler) syncRole(srr *StardogRoleReconciliation) error {
 				ResourceType: &permission.ResourceType,
 				Resource:     &permission.Resources,
 			})
-			if err != nil {
-				permissionErrors = append(permissionErrors, err)
-			}
-		}
-	}
-
-	for _, existingPermission := range existingPermissions {
-		if !containsStardogPermission(permissions, existingPermission) {
-			_, err := stardogClient.RemoveRolePermission(ctx, roleName, existingPermission)
 			if err != nil {
 				permissionErrors = append(permissionErrors, err)
 			}
@@ -186,6 +185,7 @@ func (r *StardogRoleReconciler) syncRole(srr *StardogRoleReconciliation) error {
 func (r *StardogRoleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&StardogRole{}).
+		WithEventFilter(predicate.GenerationChangedPredicate{}).
 		Complete(r)
 }
 

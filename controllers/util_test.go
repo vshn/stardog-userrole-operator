@@ -29,9 +29,9 @@ func Test_getData(t *testing.T) {
 					"password": "1234",
 				},
 				Data: map[string][]byte{
-					"fake":     []byte(base64.StdEncoding.EncodeToString([]byte("fake"))),
-					"username": []byte(base64.StdEncoding.EncodeToString([]byte("dark"))),
-					"password": []byte(base64.StdEncoding.EncodeToString([]byte("1234"))),
+					"fake":     []byte("fake"),
+					"username": []byte("dark"),
+					"password": []byte("1234"),
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "test-namespace",
@@ -51,9 +51,9 @@ func Test_getData(t *testing.T) {
 					"password": "1234",
 				},
 				Data: map[string][]byte{
-					"fake":     []byte(base64.StdEncoding.EncodeToString([]byte("fake"))),
-					"username": []byte(base64.StdEncoding.EncodeToString([]byte("dark"))),
-					"password": []byte(base64.StdEncoding.EncodeToString([]byte("1234"))),
+					"fake":     []byte("fake"),
+					"username": []byte("dark"),
+					"password": []byte("1234"),
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "test-namespace",

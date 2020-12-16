@@ -1,0 +1,59 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: ClusterServiceVersion
+metadata:
+  annotations:
+    alm-examples: '[]'
+    capabilities: Basic Install
+    operators.operatorframework.io/builder: operator-sdk-v1.2.0
+    operators.operatorframework.io/project_layout: go.kubebuilder.io/v2
+  name: stardog-userrole-operator.vX.Y.Z
+  namespace: placeholder
+spec:
+  apiservicedefinitions: {}
+  customresourcedefinitions:
+    owned:
+    - description: StardogRole is the Schema for the stardogroles API
+      displayName: Stardog Role
+      kind: StardogRole
+      name: stardogroles.stardog.vshn.ch
+      version: v1alpha1
+    - description: StardogUser is the Schema for the stardogusers API
+      displayName: Stardog User
+      kind: StardogUser
+      name: stardogusers.stardog.vshn.ch
+      version: v1alpha1
+    - description: StardogInstance contains information about a Stardog server or cluster.
+      displayName: Stardog Instance
+      kind: StardogInstance
+      name: stardoginstances.stardog.vshn.ch
+      version: v1alpha1
+  description: Access management of Stardog DBs
+  displayName: stardog-userrole-operator
+  icon:
+  - base64data: ""
+    mediatype: ""
+  install:
+    spec:
+      deployments: null
+    strategy: ""
+  installModes:
+  - supported: false
+    type: OwnNamespace
+  - supported: false
+    type: SingleNamespace
+  - supported: false
+    type: MultiNamespace
+  - supported: true
+    type: AllNamespaces
+  keywords:
+  - user
+  - role
+  - stardog
+  links:
+  - name: Stardog Userrole Operator
+    url: https://stardog-userrole-operator.domain
+  maturity: alpha
+  provider:
+    name: vshn
+    url: vshn.ch
+  version: 0.0.0
