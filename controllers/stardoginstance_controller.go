@@ -8,9 +8,9 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"github.com/vshn/stardog-userrole-operator/stardogrest/stardogrestapi"
 	"net/url"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -69,35 +69,35 @@ func (r *StardogInstanceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, er
 	isStardogInstanceMarkedToBeDeleted := stardogInstance.GetDeletionTimestamp() != nil
 	if isStardogInstanceMarkedToBeDeleted {
 		r.Log.Info(fmt.Sprintf("checking if StardogInstance %s is deletable", sir.resource.Name))
-		if r.deleteStardogInstance(sir) != nil {
+		if err = r.deleteStardogInstance(sir); err != nil {
 			rc.SetStatusCondition(createStatusConditionTerminating(err))
 			rc.SetStatusCondition(createStatusConditionReady(false, "StardogInstance not ready"))
-			return ctrl.Result{Requeue: true}, r.updateStatus(sir)
+			return ctrl.Result{Requeue: true, RequeueAfter: r.ReconcileInterval}, r.updateStatus(sir)
 		}
-		return ctrl.Result{Requeue: false}, r.updateStatus(sir)
+		return ctrl.Result{Requeue: false}, nil
 	}
 
-	if r.validateSpecification(sir.resource.Spec) != nil {
+	if err = r.validateSpecification(sir.resource.Spec); err != nil {
 		rc.SetStatusCondition(createStatusConditionInvalid(err))
 		rc.SetStatusCondition(createStatusConditionReady(false, "StardogInstance not ready"))
-		return ctrl.Result{}, r.updateStatus(sir)
+		return ctrl.Result{Requeue: false}, r.updateStatus(sir)
 	}
 	rc.SetStatusIfExisting(StardogInvalid, v1.ConditionFalse)
 
-	if r.validateConnection(sir) != nil {
+	if err = r.validateConnection(sir); err != nil {
 		rc.SetStatusCondition(createStatusConditionErrored(err))
 		rc.SetStatusCondition(createStatusConditionReady(false, "StardogInstance not ready"))
-		return ctrl.Result{}, r.updateStatus(sir)
+		return ctrl.Result{Requeue: false}, r.updateStatus(sir)
 	}
 	rc.SetStatusIfExisting(StardogErrored, v1.ConditionFalse)
 
 	controllerutil.AddFinalizer(sir.resource, instanceUserFinalizer)
 	controllerutil.AddFinalizer(sir.resource, instanceRoleFinalizer)
 
-	if r.Update(sir.reconciliationContext.context, sir.resource) != nil {
+	if err = r.Update(sir.reconciliationContext.context, sir.resource); err != nil {
 		rc.SetStatusCondition(createStatusConditionErrored(err))
 		rc.SetStatusCondition(createStatusConditionReady(false, "StardogInstance not ready"))
-		return ctrl.Result{Requeue: true}, r.updateStatus(sir)
+		return ctrl.Result{Requeue: true, RequeueAfter: r.ReconcileInterval}, r.updateStatus(sir)
 	}
 	rc.SetStatusCondition(createStatusConditionReady(true, "Synchronized"))
 	return ctrl.Result{Requeue: false}, r.updateStatus(sir)
@@ -117,13 +117,13 @@ func (r *StardogInstanceReconciler) deleteStardogInstance(sir *StardogInstanceRe
 	stardogClient.SetConnection(sir.resource.Spec.ServerUrl, username, password)
 
 	if contains(stardogInstance.GetFinalizers(), instanceUserFinalizer) {
-		if err := r.userFinalizer(stardogClient, rc.context); err != nil {
+		if err := r.userFinalizer(sir); err != nil {
 			return err
 		}
 		controllerutil.RemoveFinalizer(stardogInstance, instanceUserFinalizer)
 	}
 	if contains(stardogInstance.GetFinalizers(), instanceRoleFinalizer) {
-		if err := r.roleFinalizer(stardogClient, rc.context); err != nil {
+		if err := r.roleFinalizer(sir); err != nil {
 			return err
 		}
 		controllerutil.RemoveFinalizer(stardogInstance, instanceRoleFinalizer)
@@ -134,24 +134,42 @@ func (r *StardogInstanceReconciler) deleteStardogInstance(sir *StardogInstanceRe
 	return nil
 }
 
-func (r *StardogInstanceReconciler) userFinalizer(stardogClient stardogrestapi.ExtendedBaseClientAPI, ctx context.Context) error {
-	users, err := stardogClient.ListUsers(ctx)
+func (r *StardogInstanceReconciler) userFinalizer(sir *StardogInstanceReconciliation) error {
+	resource := sir.resource
+	stardogUserList := &StardogUserList{}
+	err := r.Client.List(sir.reconciliationContext.context, stardogUserList, client.InNamespace(resource.Namespace))
 	if err != nil {
-		return fmt.Errorf("cannot list Stardog users: %v", err)
+		return fmt.Errorf("cannot list Stardog User CRDs: %v", err)
 	}
-	if len(*users.Users) > 0 {
-		return fmt.Errorf("cannot delete StardogInstance, found %d users", len(*users.Users))
+	items := stardogUserList.Items
+	activeUsers := make([]string, len(items))
+	for _, stardogUser := range items {
+		if stardogUser.Spec.StardogInstanceRef == resource.Name {
+			activeUsers = append(activeUsers, stardogUser.Name)
+		}
+	}
+	if len(items) > 0 {
+		return fmt.Errorf("cannot delete StardogInstance, found %s user CRDs", activeUsers)
 	}
 	return nil
 }
 
-func (r *StardogInstanceReconciler) roleFinalizer(stardogClient stardogrestapi.ExtendedBaseClientAPI, ctx context.Context) error {
-	roles, err := stardogClient.ListRoles(ctx)
+func (r *StardogInstanceReconciler) roleFinalizer(sir *StardogInstanceReconciliation) error {
+	resource := sir.resource
+	stardogRoleList := &StardogRoleList{}
+	err := r.Client.List(sir.reconciliationContext.context, stardogRoleList, client.InNamespace(resource.Namespace))
 	if err != nil {
-		return fmt.Errorf("cannot list Stardog roles: %v", err)
+		return fmt.Errorf("cannot list Stardog Role CRDs: %v", err)
 	}
-	if len(*roles.Roles) > 0 {
-		return fmt.Errorf("cannot delete StardogInstance, found %d remaining role(s)", len(*roles.Roles))
+	items := stardogRoleList.Items
+	activeRoles := make([]string, len(items))
+	for _, stardogRole := range items {
+		if stardogRole.Spec.StardogInstanceRef == resource.Name {
+			activeRoles = append(activeRoles, stardogRole.Name)
+		}
+	}
+	if len(items) > 0 {
+		return fmt.Errorf("cannot delete StardogInstance, found %s role CRDs", activeRoles)
 	}
 	return nil
 }
@@ -195,6 +213,7 @@ func (r *StardogInstanceReconciler) validateConnection(sir *StardogInstanceRecon
 func (r *StardogInstanceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&StardogInstance{}).
+		WithEventFilter(predicate.GenerationChangedPredicate{}).
 		Complete(r)
 }
 

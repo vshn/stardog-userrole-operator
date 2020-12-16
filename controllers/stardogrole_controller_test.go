@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"github.com/Azure/go-autorest/autorest"
 	testing2 "github.com/go-logr/logr/testing"
@@ -95,7 +96,11 @@ func Test_syncRole(t *testing.T) {
 				func(stardogrestapi2.ExtendedBaseClientAPI) {
 					stardogClient.
 						EXPECT().
-						SetConnection(serverURL, username, password).
+						SetConnection(
+							serverURL,
+							base64.StdEncoding.EncodeToString([]byte(username)),
+							base64.StdEncoding.EncodeToString([]byte(password)),
+						).
 						Times(1)
 				},
 				func(stardogrestapi2.ExtendedBaseClientAPI) {
@@ -157,7 +162,10 @@ func Test_syncRole(t *testing.T) {
 				func(stardogrestapi2.ExtendedBaseClientAPI) {
 					stardogClient.
 						EXPECT().
-						SetConnection(serverURL, username, password).
+						SetConnection(
+							serverURL,
+							base64.StdEncoding.EncodeToString([]byte(username)),
+							base64.StdEncoding.EncodeToString([]byte(password))).
 						Times(1)
 				},
 				func(stardogrestapi2.ExtendedBaseClientAPI) {
@@ -448,7 +456,10 @@ func Test_finalizeRole(t *testing.T) {
 			conditions: []func(stardogrestapi2.ExtendedBaseClientAPI){
 				func(stardogrestapi2.ExtendedBaseClientAPI) {
 					stardogClient.EXPECT().
-						SetConnection(serverURL, username, password).
+						SetConnection(
+							serverURL,
+							base64.StdEncoding.EncodeToString([]byte(username)),
+							base64.StdEncoding.EncodeToString([]byte(password))).
 						Times(1)
 				},
 				func(stardogrestapi2.ExtendedBaseClientAPI) {
@@ -482,7 +493,10 @@ func Test_finalizeRole(t *testing.T) {
 			conditions: []func(stardogrestapi2.ExtendedBaseClientAPI){
 				func(stardogrestapi2.ExtendedBaseClientAPI) {
 					stardogClient.EXPECT().
-						SetConnection(serverURL, username, password).
+						SetConnection(
+							serverURL,
+							base64.StdEncoding.EncodeToString([]byte(username)),
+							base64.StdEncoding.EncodeToString([]byte(password))).
 						Times(1)
 				},
 				func(stardogrestapi2.ExtendedBaseClientAPI) {
@@ -516,7 +530,10 @@ func Test_finalizeRole(t *testing.T) {
 			conditions: []func(stardogrestapi2.ExtendedBaseClientAPI){
 				func(stardogrestapi2.ExtendedBaseClientAPI) {
 					stardogClient.EXPECT().
-						SetConnection(serverURL, username, password).
+						SetConnection(
+							serverURL,
+							base64.StdEncoding.EncodeToString([]byte(username)),
+							base64.StdEncoding.EncodeToString([]byte(password))).
 						Times(1)
 				},
 				func(stardogrestapi2.ExtendedBaseClientAPI) {
