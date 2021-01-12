@@ -55,9 +55,11 @@ spec:
                     - ROLE
                     - ADMIN
                     - METADATA
-                    - NAMEDGRAPH
-                    - VIRTUALGRAPH
-                    - ICVCONSTRAINTS
+                    - NAMED-GRAPH
+                    - VIRTUAL-GRAPH
+                    - ICV-CONSTRAINTS
+                    - SENSITIVE-PROPERTIES
+                    - '*'
                     type: string
                   resources:
                     description: Resources is a list of permission objects that get each targeted by the action and resource type properties
