@@ -28,7 +28,7 @@ metadata:
     capabilities: Basic Install
     operators.operatorframework.io/builder: operator-sdk-v1.2.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v2
-  name: stardog-userrole-operator.v0.0.1
+  name: stardog-userrole-operator.v0.0.2
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -58,6 +58,18 @@ spec:
     spec:
       clusterPermissions:
       - rules:
+        - apiGroups:
+          - ""
+          resources:
+          - secrets
+          verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
         - apiGroups:
           - stardog.vshn.ch
           resources:
@@ -198,16 +210,6 @@ spec:
           verbs:
           - create
           - patch
-        - apiGroups:
-          - ""
-          resources:
-          - secrets
-          verbs:
-          - get
-          - create
-          - update
-          - patch
-          - delete
         serviceAccountName: default
     strategy: deployment
   installModes:
@@ -230,4 +232,5 @@ spec:
   provider:
     name: vshn
     url: vshn.ch
-  version: 0.0.1
+  replaces: stardog-userrole-operator.v0.0.1
+  version: 0.0.2

@@ -44,7 +44,7 @@ type StardogPermissionSpec struct {
 	// +kubebuilder:validation:Required
 	Action string `json:"action,omitempty"`
 	// ResourceType describes the type of resource a specific permission is assigned to
-	// +kubebuilder:validation:Enum=DB;USER;ROLE;ADMIN;METADATA;NAMEDGRAPH;VIRTUALGRAPH;ICVCONSTRAINTS
+	// +kubebuilder:validation:Enum=DB;USER;ROLE;ADMIN;METADATA;NAMED-GRAPH;VIRTUAL-GRAPH;ICV-CONSTRAINTS;SENSITIVE-PROPERTIES;*
 	// +kubebuilder:validation:Required
 	ResourceType string `json:"resourceType,omitempty"`
 	// Resources is a list of permission objects that get each targeted by the action and resource type properties
