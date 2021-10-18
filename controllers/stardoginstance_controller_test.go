@@ -10,10 +10,13 @@ import (
 	"github.com/vshn/stardog-userrole-operator/api/v1alpha1"
 	"github.com/vshn/stardog-userrole-operator/stardogrest"
 	stardogrestapi "github.com/vshn/stardog-userrole-operator/stardogrest/mocks"
+	stardogrestapi2 "github.com/vshn/stardog-userrole-operator/stardogrest/stardogrestapi"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
+	"os"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"testing"
 	"time"
 )
@@ -399,6 +402,302 @@ func Test_validateConnection(t *testing.T) {
 	}
 }
 
+func Test_ReconcileInstance(t *testing.T) {
+
+	namespace := "namespace-test"
+	stardogInstanceName := "instance-test"
+	secretName := "secret-test"
+	serverURL := "http://localhost:5820/"
+
+	req := ctrl.Request{
+		NamespacedName: types.NamespacedName{Name: stardogInstanceName, Namespace: namespace},
+	}
+
+	err := v1alpha1.AddToScheme(scheme.Scheme)
+	assert.NoError(t, err)
+
+	tests := []struct {
+		name            string
+		namespace       v1.Namespace
+		stardogInstance v1alpha1.StardogInstance
+		sir             StardogInstanceReconciliation
+		expectedResult  ctrl.Result
+	}{
+		{
+			name:            "GivenReconciliation_WhenStardogInstanceMissing_ThenReturnNoRequeue",
+			namespace:       *createNamespace(namespace),
+			stardogInstance: *createStardogInstance(namespace, "nonExistingInstance", secretName, serverURL),
+			expectedResult: ctrl.Result{
+				Requeue:      false,
+				RequeueAfter: 0,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fakeKubeClient, err := createKubeFakeClient(&tt.namespace, &tt.stardogInstance)
+			assert.NoError(t, err)
+			r := StardogInstanceReconciler{
+				Log:               testing2.TestLogger{},
+				ReconcileInterval: time.Duration(1),
+				Scheme:            scheme.Scheme,
+				Client:            fakeKubeClient,
+			}
+
+			result, err := r.Reconcile(req)
+
+			assert.Equal(t, tt.expectedResult, result)
+		})
+	}
+}
+
+func Test_ReconcileStardogInstance(t *testing.T) {
+
+	namespace := "namespace-test"
+	stardogInstanceName := "instance-test"
+	secretName := "secret-test"
+	stardogRoleName := "stardog-role"
+	serverURL := "http://localhost:5820/"
+	username := "admin"
+	password := "1234"
+
+	err := v1alpha1.AddToScheme(scheme.Scheme)
+	assert.NoError(t, err)
+
+	os.Setenv("RECONCILIATION_FREQUENCY_ON_ERROR", "1s")
+	os.Setenv("RECONCILIATION_FREQUENCY", "1m")
+	InitEnv()
+
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	stardogClient := stardogrestapi.NewMockExtendedBaseClientAPI(mockCtrl)
+
+	tests := []struct {
+		name            string
+		namespace       v1.Namespace
+		stardogInstance v1alpha1.StardogInstance
+		stardogRole     v1alpha1.StardogRole
+		sir             StardogInstanceReconciliation
+		secret          v1.Secret
+		expectations    []func(stardogrestapi2.ExtendedBaseClientAPI)
+		expectedResult  ctrl.Result
+	}{
+		{
+			name:            "GivenReconciliation_WhenStardogInstanceIsDeleted_ThenReturnNoRequeue",
+			namespace:       *createNamespace(namespace),
+			stardogInstance: *createDeletedStardogInstance(namespace, stardogInstanceName, secretName, serverURL),
+			secret:          *createFullSecret(namespace, secretName, username, password),
+			sir: StardogInstanceReconciliation{
+				reconciliationContext: &ReconciliationContext{
+					context:       context.Background(),
+					conditions:    make(v1alpha1.StardogConditionMap),
+					namespace:     namespace,
+					stardogClient: stardogClient,
+				},
+				resource: createStardogInstance(namespace, stardogInstanceName, secretName, serverURL),
+			},
+			expectations: []func(stardogrestapi2.ExtendedBaseClientAPI){
+				func(stardogrestapi2.ExtendedBaseClientAPI) {
+					stardogClient.EXPECT().
+						SetConnection(gomock.Any(), gomock.Any(), gomock.Any())
+				},
+			},
+			expectedResult: ctrl.Result{
+				Requeue:      false,
+				RequeueAfter: 0,
+			},
+		},
+		{
+			name:            "GivenReconciliation_WhenStardogInstanceIsDeletedWithFinalizers_ThenReturnRequeue",
+			namespace:       *createNamespace(namespace),
+			stardogInstance: *createDeletedStardogInstanceWithFinalizers(namespace, stardogInstanceName, secretName, serverURL),
+			secret:          *createFullSecret(namespace, secretName, username, password),
+			sir: StardogInstanceReconciliation{
+				reconciliationContext: &ReconciliationContext{
+					context:       context.Background(),
+					conditions:    make(v1alpha1.StardogConditionMap),
+					namespace:     namespace,
+					stardogClient: stardogClient,
+				},
+				resource: createStardogInstance(namespace, stardogInstanceName, secretName, serverURL),
+			},
+			expectations: []func(stardogrestapi2.ExtendedBaseClientAPI){
+				func(stardogrestapi2.ExtendedBaseClientAPI) {
+					stardogClient.EXPECT().
+						SetConnection(gomock.Any(), gomock.Any(), gomock.Any())
+				},
+			},
+			expectedResult: ctrl.Result{
+				Requeue:      false,
+				RequeueAfter: 0,
+			},
+		},
+		{
+			name:            "GivenReconciliation_WhenStardogInstanceIsDeletedWithFinalizersAndRole_ThenReturnRequeue",
+			namespace:       *createNamespace(namespace),
+			stardogInstance: *createDeletedStardogInstanceWithFinalizers(namespace, stardogInstanceName, secretName, serverURL),
+			stardogRole:     *createStardogRole(namespace, stardogRoleName, stardogInstanceName, []v1alpha1.StardogPermissionSpec{}),
+			secret:          *createFullSecret(namespace, secretName, username, password),
+			sir: StardogInstanceReconciliation{
+				reconciliationContext: &ReconciliationContext{
+					context:       context.Background(),
+					conditions:    make(v1alpha1.StardogConditionMap),
+					namespace:     namespace,
+					stardogClient: stardogClient,
+				},
+				resource: createStardogInstance(namespace, stardogInstanceName, secretName, serverURL),
+			},
+			expectations: []func(stardogrestapi2.ExtendedBaseClientAPI){
+				func(stardogrestapi2.ExtendedBaseClientAPI) {
+					stardogClient.EXPECT().
+						SetConnection(gomock.Any(), gomock.Any(), gomock.Any())
+				},
+			},
+			expectedResult: ctrl.Result{
+				Requeue:      true,
+				RequeueAfter: ReconFreqErr,
+			},
+		},
+		{
+			name:            "GivenReconciliation_WhenStardogInstanceIsInvalid_ThenReturnNoRequeue",
+			namespace:       *createNamespace(namespace),
+			stardogInstance: *createStardogInstance(namespace, stardogInstanceName, "", serverURL),
+			secret:          *createFullSecret(namespace, secretName, username, password),
+			sir: StardogInstanceReconciliation{
+				reconciliationContext: &ReconciliationContext{
+					context:       context.Background(),
+					conditions:    make(v1alpha1.StardogConditionMap),
+					namespace:     namespace,
+					stardogClient: stardogClient,
+				},
+				resource: createStardogInstance(namespace, stardogInstanceName, secretName, serverURL),
+			},
+			expectedResult: ctrl.Result{
+				Requeue:      false,
+				RequeueAfter: 0,
+			},
+		},
+		{
+			name:            "GivenReconciliation_WhenStardogInstanceUnreachable_ThenReturnRequeue",
+			namespace:       *createNamespace(namespace),
+			stardogInstance: *createStardogInstance(namespace, stardogInstanceName, secretName, serverURL),
+			secret:          *createFullSecret(namespace, secretName, username, password),
+			sir: StardogInstanceReconciliation{
+				reconciliationContext: &ReconciliationContext{
+					context:       context.Background(),
+					conditions:    make(v1alpha1.StardogConditionMap),
+					namespace:     namespace,
+					stardogClient: stardogClient,
+				},
+				resource: createStardogInstance(namespace, stardogInstanceName, secretName, serverURL),
+			},
+			expectations: []func(stardogrestapi2.ExtendedBaseClientAPI){
+				func(stardogrestapi2.ExtendedBaseClientAPI) {
+					stardogClient.EXPECT().
+						SetConnection(gomock.Any(), gomock.Any(), gomock.Any())
+				},
+				func(stardogrestapi2.ExtendedBaseClientAPI) {
+					stardogClient.EXPECT().
+						IsEnabled(gomock.Any(), gomock.Any()).
+						Return(stardogrest.Enabled{}, errors.New("cannot connect to Stardog"))
+				},
+			},
+			expectedResult: ctrl.Result{
+				Requeue:      true,
+				RequeueAfter: ReconFreqErr,
+			},
+		},
+		{
+			name:            "GivenReconciliation_WhenStardogInstanceCannotBeUpdated_ThenReturnRequeue",
+			namespace:       *createNamespace(namespace),
+			stardogInstance: *createStardogInstance(namespace, "", secretName, serverURL),
+			secret:          *createFullSecret(namespace, secretName, username, password),
+			sir: StardogInstanceReconciliation{
+				reconciliationContext: &ReconciliationContext{
+					context:       context.Background(),
+					conditions:    make(v1alpha1.StardogConditionMap),
+					namespace:     namespace,
+					stardogClient: stardogClient,
+				},
+				resource: createStardogInstance(namespace, stardogInstanceName, secretName, serverURL),
+			},
+			expectations: []func(stardogrestapi2.ExtendedBaseClientAPI){
+				func(stardogrestapi2.ExtendedBaseClientAPI) {
+					stardogClient.EXPECT().
+						SetConnection(gomock.Any(), gomock.Any(), gomock.Any())
+				},
+				func(stardogrestapi2.ExtendedBaseClientAPI) {
+					stardogClient.EXPECT().
+						IsEnabled(gomock.Any(), gomock.Any())
+				},
+			},
+			expectedResult: ctrl.Result{
+				Requeue:      true,
+				RequeueAfter: ReconFreqErr,
+			},
+		},
+		{
+			name:            "GivenReconciliation_WhenStardogInstanceIsReconciled_ThenReturnNoRequeue",
+			namespace:       *createNamespace(namespace),
+			stardogInstance: *createStardogInstance(namespace, stardogInstanceName, secretName, serverURL),
+			secret:          *createFullSecret(namespace, secretName, username, password),
+			sir: StardogInstanceReconciliation{
+				reconciliationContext: &ReconciliationContext{
+					context:       context.Background(),
+					conditions:    make(v1alpha1.StardogConditionMap),
+					namespace:     namespace,
+					stardogClient: stardogClient,
+				},
+				resource: createStardogInstance(namespace, stardogInstanceName, secretName, serverURL),
+			},
+			expectations: []func(stardogrestapi2.ExtendedBaseClientAPI){
+				func(stardogrestapi2.ExtendedBaseClientAPI) {
+					stardogClient.EXPECT().
+						SetConnection(gomock.Any(), gomock.Any(), gomock.Any())
+				},
+				func(stardogrestapi2.ExtendedBaseClientAPI) {
+					stardogClient.EXPECT().
+						IsEnabled(gomock.Any(), gomock.Any())
+				},
+			},
+			expectedResult: ctrl.Result{
+				Requeue:      true,
+				RequeueAfter: ReconFreq,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fakeKubeClient, err := createKubeFakeClient(&tt.namespace, &tt.stardogInstance, &tt.secret, &tt.stardogRole)
+			assert.NoError(t, err)
+			r := StardogInstanceReconciler{
+				Log:               testing2.TestLogger{T: t},
+				ReconcileInterval: time.Duration(1),
+				Scheme:            scheme.Scheme,
+				Client:            fakeKubeClient,
+			}
+			sir := &StardogInstanceReconciliation{
+				reconciliationContext: &ReconciliationContext{
+					context:       context.Background(),
+					conditions:    make(map[v1alpha1.StardogConditionType]v1alpha1.StardogCondition),
+					namespace:     namespace,
+					stardogClient: stardogClient,
+				},
+				resource: &tt.stardogInstance,
+			}
+			for _, addExpectation := range tt.expectations {
+				addExpectation(tt.sir.reconciliationContext.stardogClient)
+			}
+
+			result, err := r.ReconcileStardogInstance(sir)
+
+			assert.Equal(t, tt.expectedResult, result)
+		})
+	}
+}
+
 func createStardogInstance(namespace, name, secretName, serverURL string) *v1alpha1.StardogInstance {
 	return &v1alpha1.StardogInstance{
 		TypeMeta:   metav1.TypeMeta{Kind: "StardogInstance", APIVersion: "v1alpha1"},
@@ -413,8 +712,23 @@ func createStardogInstance(namespace, name, secretName, serverURL string) *v1alp
 	}
 }
 
+func createDeletedStardogInstance(namespace, name, secretName, serverURL string) *v1alpha1.StardogInstance {
+	stardogInstace := createStardogInstance(namespace, name, secretName, serverURL)
+	newTime := metav1.NewTime(time.Now())
+	stardogInstace.SetDeletionTimestamp(&newTime)
+	return stardogInstace
+}
+
+func createDeletedStardogInstanceWithFinalizers(namespace, name, secretName, serverURL string) *v1alpha1.StardogInstance {
+	stardogInstance := createStardogInstance(namespace, name, secretName, serverURL)
+	newTime := metav1.NewTime(time.Now())
+	stardogInstance.SetDeletionTimestamp(&newTime)
+	stardogInstance.SetFinalizers([]string{instanceRoleFinalizer, instanceUserFinalizer})
+	return stardogInstance
+}
+
 func createStardogInstanceWithFinalizers(namespace, name, secretName, serverURL string) *v1alpha1.StardogInstance {
-	instance := createStardogInstance(namespace, name, secretName, serverURL)
-	instance.SetFinalizers([]string{instanceRoleFinalizer, instanceUserFinalizer})
-	return instance
+	stardogInstance := createStardogInstance(namespace, name, secretName, serverURL)
+	stardogInstance.SetFinalizers([]string{instanceRoleFinalizer, instanceUserFinalizer})
+	return stardogInstance
 }

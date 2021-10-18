@@ -8,7 +8,9 @@ import (
 	"github.com/vshn/stardog-userrole-operator/stardogrest"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"os"
 	"testing"
+	"time"
 )
 
 func Test_getData(t *testing.T) {
@@ -608,6 +610,49 @@ func Test_mergeWithExistingConditions(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			result := mergeWithExistingConditions(tt.existingStardogConditions, tt.newStardogConditions)
 			assert.ElementsMatch(t, tt.expectConditions, result)
+		})
+	}
+}
+
+func Test_init(t *testing.T) {
+
+	tests := []struct {
+		name                    string
+		reconFreqErr            string
+		reconFreq               string
+		expectedReconFreqErrDur time.Duration
+		expectedReconFreqDur    time.Duration
+	}{
+		{
+			name:                    "GiveReconFreq_WhenIsCorrectPopulated_ThenReturnDuration",
+			reconFreqErr:            "1s",
+			reconFreq:               "1h",
+			expectedReconFreqErrDur: time.Second,
+			expectedReconFreqDur:    time.Hour,
+		},
+		{
+			name:                    "GiveReconFreq_WhenIsNotParsable_ThenReturn0Duration",
+			reconFreqErr:            "1asd",
+			reconFreq:               "1d",
+			expectedReconFreqErrDur: 0,
+			expectedReconFreqDur:    0,
+		},
+		{
+			name:                    "GiveReconFreq_WhenIsNegativeValue_ThenReturn0Duration",
+			reconFreqErr:            "-24s",
+			reconFreq:               "-1h",
+			expectedReconFreqErrDur: 0,
+			expectedReconFreqDur:    0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_ = os.Setenv("RECONCILIATION_FREQUENCY_ON_ERROR", tt.reconFreqErr)
+			_ = os.Setenv("RECONCILIATION_FREQUENCY", tt.reconFreq)
+			InitEnv()
+			assert.Equal(t, tt.expectedReconFreqDur, ReconFreq)
+			assert.Equal(t, tt.expectedReconFreqErrDur, ReconFreqErr)
 		})
 	}
 }
