@@ -91,6 +91,9 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "StardogInstance")
 		os.Exit(1)
 	}
+
+	controllers.InitEnv()
+
 	// +kubebuilder:scaffold:builder
 
 	setupLog.Info("starting manager")

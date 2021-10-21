@@ -61,54 +61,62 @@ func (r *StardogRoleReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error)
 			return ctrl.Result{Requeue: false}, nil
 		}
 		r.Log.Error(err, "Could not retrieve StardogRole.", "StardogRole", namespace)
-		return ctrl.Result{Requeue: true, RequeueAfter: r.ReconcileInterval}, err
+		return ctrl.Result{Requeue: true, RequeueAfter: ReconFreqErr}, err
 	}
 
-	rc := &ReconciliationContext{
-		context:       ctx,
-		conditions:    make(map[StardogConditionType]StardogCondition),
-		namespace:     namespace.Namespace,
-		stardogClient: stardogrest.NewExtendedBaseClient(),
-	}
 	srr := &StardogRoleReconciliation{
-		reconciliationContext: rc,
-		resource:              stardogRole,
+		reconciliationContext: &ReconciliationContext{
+			context:       ctx,
+			conditions:    make(map[StardogConditionType]StardogCondition),
+			namespace:     namespace.Namespace,
+			stardogClient: stardogrest.NewExtendedBaseClient(),
+		},
+		resource: stardogRole,
 	}
+
+	return r.ReconcileStardogRole(srr)
+}
+
+func (r *StardogRoleReconciler) ReconcileStardogRole(srr *StardogRoleReconciliation) (ctrl.Result, error) {
+
+	rc := srr.reconciliationContext
+	stardogRole := srr.resource
+	r.Log.Info("reconciling", getLoggingKeysAndValuesForStardogRole(stardogRole)...)
 
 	isStardogRoleMarkedToBeDeleted := stardogRole.GetDeletionTimestamp() != nil
 	if isStardogRoleMarkedToBeDeleted {
-		if err = r.deleteStardogRole(srr); err != nil {
+		if err := r.deleteStardogRole(srr); err != nil {
 			rc.SetStatusCondition(createStatusConditionTerminating(err))
-			rc.SetStatusCondition(createStatusConditionReady(false, "StardogInstance cannot be deleted"))
-			return ctrl.Result{Requeue: true, RequeueAfter: r.ReconcileInterval}, r.updateStatus(srr)
+			rc.SetStatusCondition(createStatusConditionReady(false, "StardogRole cannot be deleted"))
+			return ctrl.Result{Requeue: true, RequeueAfter: ReconFreqErr}, r.updateStatus(srr)
 		}
 		return ctrl.Result{Requeue: false}, nil
 	}
 
-	if err = r.validateSpecification(srr.resource); err != nil {
+	if err := r.validateSpecification(srr.resource); err != nil {
 		rc.SetStatusCondition(createStatusConditionInvalid(err))
 		rc.SetStatusCondition(createStatusConditionReady(false, "Specification cannot be validated"))
 		return ctrl.Result{Requeue: false}, r.updateStatus(srr)
 	}
 	rc.SetStatusIfExisting(StardogInvalid, v1.ConditionFalse)
 
-	if err = r.syncRole(srr); err != nil {
+	if err := r.syncRole(srr); err != nil {
 		rc.SetStatusCondition(createStatusConditionErrored(err))
 		rc.SetStatusCondition(createStatusConditionReady(false, "Synchronization failed"))
-		return ctrl.Result{Requeue: false}, r.updateStatus(srr)
+		return ctrl.Result{Requeue: true, RequeueAfter: ReconFreqErr}, r.updateStatus(srr)
 	}
 	rc.SetStatusIfExisting(StardogErrored, v1.ConditionFalse)
 
 	r.Log.V(1).Info("adding Finalizer for the StardogRole")
 	controllerutil.AddFinalizer(srr.resource, roleFinalizer)
 
-	if err = r.Update(srr.reconciliationContext.context, srr.resource); err != nil {
+	if err := r.Update(srr.reconciliationContext.context, srr.resource); err != nil {
 		rc.SetStatusCondition(createStatusConditionErrored(err))
-		rc.SetStatusCondition(createStatusConditionReady(false, "Finalizer cannot be added"))
-		return ctrl.Result{Requeue: true, RequeueAfter: r.ReconcileInterval}, r.updateStatus(srr)
+		rc.SetStatusCondition(createStatusConditionReady(false, "Cannot update role"))
+		return ctrl.Result{Requeue: true, RequeueAfter: ReconFreqErr}, r.updateStatus(srr)
 	}
 	rc.SetStatusCondition(createStatusConditionReady(true, "Synchronized"))
-	return ctrl.Result{Requeue: false}, r.updateStatus(srr)
+	return ctrl.Result{Requeue: true, RequeueAfter: ReconFreq}, r.updateStatus(srr)
 }
 
 func (r *StardogRoleReconciler) syncRole(srr *StardogRoleReconciliation) error {

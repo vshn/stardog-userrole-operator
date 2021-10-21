@@ -6,9 +6,26 @@ import (
 	"github.com/vshn/stardog-userrole-operator/stardogrest"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"os"
 	"reflect"
 	"strings"
+	"time"
 )
+
+var (
+	ReconFreqErr = time.Duration(0)
+	ReconFreq    = time.Duration(0)
+)
+
+// initEnv initialize env variables
+func InitEnv() {
+	ReconFreqErr, _ = time.ParseDuration(os.Getenv("RECONCILIATION_FREQUENCY_ON_ERROR"))
+	ReconFreq, _ = time.ParseDuration(os.Getenv("RECONCILIATION_FREQUENCY"))
+	if ReconFreq < 0 || ReconFreqErr < 0 {
+		ReconFreq = 0
+		ReconFreqErr = 0
+	}
+}
 
 // createStatusConditionReady is a shortcut for adding a StardogReady condition.
 func createStatusConditionReady(isReady bool, message string) StardogCondition {

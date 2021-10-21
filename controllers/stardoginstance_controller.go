@@ -50,57 +50,63 @@ func (r *StardogInstanceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, er
 			return ctrl.Result{Requeue: false}, nil
 		}
 		r.Log.Error(err, "could not retrieve StardogInstance.", "StardogInstance", namespace)
-		return ctrl.Result{Requeue: true, RequeueAfter: r.ReconcileInterval}, err
+		return ctrl.Result{Requeue: true, RequeueAfter: ReconFreqErr}, err
 	}
 
-	rc := &ReconciliationContext{
-		context:       ctx,
-		conditions:    make(map[StardogConditionType]StardogCondition),
-		namespace:     namespace.Namespace,
-		stardogClient: stardogrest.NewExtendedBaseClient(),
-	}
 	sir := &StardogInstanceReconciliation{
-		reconciliationContext: rc,
-		resource:              stardogInstance,
+		reconciliationContext: &ReconciliationContext{
+			context:       ctx,
+			conditions:    make(map[StardogConditionType]StardogCondition),
+			namespace:     namespace.Namespace,
+			stardogClient: stardogrest.NewExtendedBaseClient(),
+		},
+		resource: stardogInstance,
 	}
 
+	return r.ReconcileStardogInstance(sir)
+}
+
+func (r *StardogInstanceReconciler) ReconcileStardogInstance(sir *StardogInstanceReconciliation) (ctrl.Result, error) {
+
+	rc := sir.reconciliationContext
+	stardogInstance := sir.resource
 	r.Log.Info("reconciling", getLoggingKeysAndValuesForStardogInstance(stardogInstance)...)
 
 	isStardogInstanceMarkedToBeDeleted := stardogInstance.GetDeletionTimestamp() != nil
 	if isStardogInstanceMarkedToBeDeleted {
 		r.Log.Info(fmt.Sprintf("checking if StardogInstance %s is deletable", sir.resource.Name))
-		if err = r.deleteStardogInstance(sir); err != nil {
+		if err := r.deleteStardogInstance(sir); err != nil {
 			rc.SetStatusCondition(createStatusConditionTerminating(err))
 			rc.SetStatusCondition(createStatusConditionReady(false, "StardogInstance not ready"))
-			return ctrl.Result{Requeue: true, RequeueAfter: r.ReconcileInterval}, r.updateStatus(sir)
+			return ctrl.Result{Requeue: true, RequeueAfter: ReconFreqErr}, r.updateStatus(sir)
 		}
 		return ctrl.Result{Requeue: false}, nil
 	}
 
-	if err = r.validateSpecification(sir.resource.Spec); err != nil {
+	if err := r.validateSpecification(sir.resource.Spec); err != nil {
 		rc.SetStatusCondition(createStatusConditionInvalid(err))
 		rc.SetStatusCondition(createStatusConditionReady(false, "StardogInstance not ready"))
 		return ctrl.Result{Requeue: false}, r.updateStatus(sir)
 	}
 	rc.SetStatusIfExisting(StardogInvalid, v1.ConditionFalse)
 
-	if err = r.validateConnection(sir); err != nil {
+	if err := r.validateConnection(sir); err != nil {
 		rc.SetStatusCondition(createStatusConditionErrored(err))
 		rc.SetStatusCondition(createStatusConditionReady(false, "StardogInstance not ready"))
-		return ctrl.Result{Requeue: false}, r.updateStatus(sir)
+		return ctrl.Result{Requeue: true, RequeueAfter: ReconFreqErr}, r.updateStatus(sir)
 	}
 	rc.SetStatusIfExisting(StardogErrored, v1.ConditionFalse)
 
 	controllerutil.AddFinalizer(sir.resource, instanceUserFinalizer)
 	controllerutil.AddFinalizer(sir.resource, instanceRoleFinalizer)
 
-	if err = r.Update(sir.reconciliationContext.context, sir.resource); err != nil {
+	if err := r.Update(sir.reconciliationContext.context, sir.resource); err != nil {
 		rc.SetStatusCondition(createStatusConditionErrored(err))
 		rc.SetStatusCondition(createStatusConditionReady(false, "StardogInstance not ready"))
-		return ctrl.Result{Requeue: true, RequeueAfter: r.ReconcileInterval}, r.updateStatus(sir)
+		return ctrl.Result{Requeue: true, RequeueAfter: ReconFreqErr}, r.updateStatus(sir)
 	}
 	rc.SetStatusCondition(createStatusConditionReady(true, "Synchronized"))
-	return ctrl.Result{Requeue: false}, r.updateStatus(sir)
+	return ctrl.Result{Requeue: true, RequeueAfter: ReconFreq}, r.updateStatus(sir)
 }
 
 func (r *StardogInstanceReconciler) deleteStardogInstance(sir *StardogInstanceReconciliation) error {
