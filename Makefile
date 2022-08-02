@@ -16,6 +16,9 @@ IMG ?= vshn/stardog-userrole-operator:latest
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS ?= "crd:trivialVersions=true"
 
+# Stardog OpenAPI spec
+STARDOG_OPENAPI_SPEC_URL ?= https://stardog-union.github.io/http-docs/openapi.json
+
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
 GOBIN=$(shell go env GOPATH)/bin
@@ -121,7 +124,7 @@ AUTOREST=$(shell which autorest)
 endif
 
 autorest: find-autorest
-	$(AUTOREST) --go --package-name="github.com/vshn/stardog-userrole-operator/stardogrest" --namespace="stardogrest" --input-file="stardogrest/stardog_swagger.yaml" --output-folder="stardogrest"
+	$(AUTOREST) --go --package-name="github.com/vshn/stardog-userrole-operator/stardogrest" --namespace="stardogrest" --input-file="$(STARDOG_OPENAPI_SPEC_URL)" --output-folder="stardogrest"
 	go fmt ./...
 
 kustomize:
