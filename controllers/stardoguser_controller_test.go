@@ -113,6 +113,13 @@ func Test_deleteStardogUser(t *testing.T) {
 			}
 			tt.condition(stardogClient)
 			stardogClient.EXPECT().SetConnection(gomock.Any(), gomock.Any(), gomock.Any())
+
+			err = fakeKubeClient.Get(context.Background(), types.NamespacedName{
+				Namespace: namespace,
+				Name:      stardogUserName,
+			}, tt.sur.resource)
+			assert.NoError(t, err)
+
 			err = r.deleteStardogUser(&tt.sur)
 			actualUser := v1alpha1.StardogUser{}
 			_ = fakeKubeClient.Get(context.Background(), types.NamespacedName{

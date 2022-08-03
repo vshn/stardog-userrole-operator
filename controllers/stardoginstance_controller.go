@@ -1,20 +1,16 @@
-/*
-Licensed under the Apache License, Version 2.0 (the "License");
-http://www.apache.org/licenses/LICENSE-2.0
-*/
-
 package controllers
 
 import (
 	"context"
 	"fmt"
 	"net/url"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"time"
 
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
+
 	"github.com/go-logr/logr"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"

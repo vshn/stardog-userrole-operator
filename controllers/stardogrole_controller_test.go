@@ -395,6 +395,13 @@ func Test_deleteStardogRole(t *testing.T) {
 			tt.condition(stardogClient)
 			stardogClient.EXPECT().SetConnection(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 			stardogClient.EXPECT().RemoveRole1(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+
+			err = fakeKubeClient.Get(context.Background(), types.NamespacedName{
+				Namespace: namespace,
+				Name:      stardogRoleName,
+			}, tt.srr.resource)
+			assert.NoError(t, err)
+
 			err = r.deleteStardogRole(&tt.srr)
 			actualRole := v1alpha1.StardogRole{}
 			_ = fakeKubeClient.Get(context.Background(), types.NamespacedName{

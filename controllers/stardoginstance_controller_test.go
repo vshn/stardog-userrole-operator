@@ -4,6 +4,10 @@ import (
 	"context"
 	"encoding/base64"
 	"errors"
+	"os"
+	"testing"
+	"time"
+
 	testr "github.com/go-logr/logr/testr"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
@@ -15,10 +19,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
-	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"testing"
-	"time"
 )
 
 func Test_deleteStardogInstance(t *testing.T) {
@@ -77,6 +78,13 @@ func Test_deleteStardogInstance(t *testing.T) {
 				serverURL,
 				base64.StdEncoding.EncodeToString([]byte(username)),
 				base64.StdEncoding.EncodeToString([]byte(password)))
+
+			err = fakeKubeClient.Get(context.Background(), types.NamespacedName{
+				Namespace: namespace,
+				Name:      stardogInstanceName,
+			}, tt.sir.resource)
+			assert.NoError(t, err)
+
 			err = r.deleteStardogInstance(&tt.sir)
 
 			actualInstance := v1alpha1.StardogInstance{}

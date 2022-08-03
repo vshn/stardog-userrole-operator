@@ -3,9 +3,10 @@ package controllers
 import (
 	"context"
 	"fmt"
+
 	. "github.com/vshn/stardog-userrole-operator/api/v1alpha1"
 	"github.com/vshn/stardog-userrole-operator/stardogrest/stardogrestapi"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
