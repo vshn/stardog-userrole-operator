@@ -49,9 +49,8 @@ const roleFinalizer = "finalizer.stardog.roles"
 // +kubebuilder:rbac:groups=stardog.vshn.ch,resources=stardogroles,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=stardog.vshn.ch,resources=stardogroles/status,verbs=get;update;patch
 
-func (r *StardogRoleReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
+func (r *StardogRoleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	namespace := req.NamespacedName
-	ctx := context.Background()
 	stardogRole := &StardogRole{}
 
 	err := r.Client.Get(ctx, namespace, stardogRole)

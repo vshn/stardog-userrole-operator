@@ -48,9 +48,8 @@ const userFinalizer = "finalizer.stardog.users"
 // +kubebuilder:rbac:groups=stardog.vshn.ch,resources=stardogusers,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=stardog.vshn.ch,resources=stardogusers/status,verbs=get;update;patch
 
-func (r *StardogUserReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
+func (r *StardogUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	namespace := req.NamespacedName
-	ctx := context.Background()
 	stardogUser := &StardogUser{}
 
 	err := r.Client.Get(ctx, namespace, stardogUser)
