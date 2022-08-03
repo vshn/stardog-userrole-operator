@@ -1,5 +1,5 @@
 
-FROM docker.io/library/alpine:3.12 as runtime
+FROM docker.io/library/alpine:3.16 as runtime
 
 ENTRYPOINT ["stardog-userrole-operator"]
 
