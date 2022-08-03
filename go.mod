@@ -1,6 +1,6 @@
 module github.com/vshn/stardog-userrole-operator
 
-go 1.17
+go 1.19
 
 require (
 	github.com/Azure/go-autorest/autorest v0.11.10
