@@ -1,20 +1,16 @@
-/*
-Licensed under the Apache License, Version 2.0 (the "License");
-http://www.apache.org/licenses/LICENSE-2.0
-*/
-
 package controllers
 
 import (
 	"context"
 	"fmt"
 	"net/url"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"time"
 
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
+
 	"github.com/go-logr/logr"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -38,9 +34,8 @@ const instanceRoleFinalizer = "finalizer.stardog.instance.roles"
 // +kubebuilder:rbac:groups=stardog.vshn.ch,resources=stardoginstances,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=stardog.vshn.ch,resources=stardoginstances/status,verbs=get;update;patch
 
-func (r *StardogInstanceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
+func (r *StardogInstanceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	namespace := req.NamespacedName
-	ctx := context.Background()
 	stardogInstance := &StardogInstance{}
 
 	err := r.Client.Get(ctx, namespace, stardogInstance)

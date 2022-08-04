@@ -4,7 +4,11 @@ import (
 	"context"
 	"encoding/base64"
 	"errors"
-	testing2 "github.com/go-logr/logr/testing"
+	"os"
+	"testing"
+	"time"
+
+	testr "github.com/go-logr/logr/testr"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/vshn/stardog-userrole-operator/api/v1alpha1"
@@ -15,10 +19,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
-	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"testing"
-	"time"
 )
 
 func Test_deleteStardogInstance(t *testing.T) {
@@ -68,7 +69,7 @@ func Test_deleteStardogInstance(t *testing.T) {
 			fakeKubeClient, err := createKubeFakeClient(&tt.stardogInstance, &tt.secret)
 			assert.NoError(t, err)
 			r := StardogInstanceReconciler{
-				Log:               testing2.TestLogger{},
+				Log:               testr.New(t),
 				ReconcileInterval: time.Duration(1),
 				Scheme:            scheme.Scheme,
 				Client:            fakeKubeClient,
@@ -77,6 +78,13 @@ func Test_deleteStardogInstance(t *testing.T) {
 				serverURL,
 				base64.StdEncoding.EncodeToString([]byte(username)),
 				base64.StdEncoding.EncodeToString([]byte(password)))
+
+			err = fakeKubeClient.Get(context.Background(), types.NamespacedName{
+				Namespace: namespace,
+				Name:      stardogInstanceName,
+			}, tt.sir.resource)
+			assert.NoError(t, err)
+
 			err = r.deleteStardogInstance(&tt.sir)
 
 			actualInstance := v1alpha1.StardogInstance{}
@@ -155,7 +163,7 @@ func Test_userFinalize(t *testing.T) {
 			fakeKubeClient, err := createKubeFakeClient(&tt.userList)
 			assert.NoError(t, err)
 			r := StardogInstanceReconciler{
-				Log:               testing2.TestLogger{},
+				Log:               testr.New(t),
 				ReconcileInterval: time.Duration(1),
 				Scheme:            scheme.Scheme,
 				Client:            fakeKubeClient,
@@ -244,7 +252,7 @@ func Test_roleFinalize(t *testing.T) {
 			fakeKubeClient, err := createKubeFakeClient(&tt.userList)
 			assert.NoError(t, err)
 			r := StardogInstanceReconciler{
-				Log:               testing2.TestLogger{},
+				Log:               testr.New(t),
 				ReconcileInterval: time.Duration(1),
 				Scheme:            scheme.Scheme,
 				Client:            fakeKubeClient,
@@ -312,7 +320,7 @@ func Test_validateSpec(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := StardogInstanceReconciler{
-				Log:               testing2.TestLogger{},
+				Log:               testr.New(t),
 				ReconcileInterval: time.Duration(1),
 				Scheme:            scheme.Scheme,
 				Client:            nil,
@@ -385,7 +393,7 @@ func Test_validateConnection(t *testing.T) {
 			fakeKubeClient, err := createKubeFakeClient(&tt.stardogInstance, &tt.secret)
 			assert.NoError(t, err)
 			r := StardogInstanceReconciler{
-				Log:               testing2.TestLogger{},
+				Log:               testr.New(t),
 				ReconcileInterval: time.Duration(1),
 				Scheme:            scheme.Scheme,
 				Client:            fakeKubeClient,
@@ -439,13 +447,13 @@ func Test_ReconcileInstance(t *testing.T) {
 			fakeKubeClient, err := createKubeFakeClient(&tt.namespace, &tt.stardogInstance)
 			assert.NoError(t, err)
 			r := StardogInstanceReconciler{
-				Log:               testing2.TestLogger{},
+				Log:               testr.New(t),
 				ReconcileInterval: time.Duration(1),
 				Scheme:            scheme.Scheme,
 				Client:            fakeKubeClient,
 			}
 
-			result, err := r.Reconcile(req)
+			result, err := r.Reconcile(context.Background(), req)
 
 			assert.Equal(t, tt.expectedResult, result)
 		})
@@ -673,7 +681,7 @@ func Test_ReconcileStardogInstance(t *testing.T) {
 			fakeKubeClient, err := createKubeFakeClient(&tt.namespace, &tt.stardogInstance, &tt.secret, &tt.stardogRole)
 			assert.NoError(t, err)
 			r := StardogInstanceReconciler{
-				Log:               testing2.TestLogger{T: t},
+				Log:               testr.New(t),
 				ReconcileInterval: time.Duration(1),
 				Scheme:            scheme.Scheme,
 				Client:            fakeKubeClient,
