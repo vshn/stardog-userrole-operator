@@ -8,10 +8,6 @@ import (
 
 // TODO extend
 type createDatabaseRequest struct {
-	Root createDatabaseRequestRoot `json:"root"`
-}
-
-type createDatabaseRequestRoot struct {
 	Name string `json:"dbname"`
 }
 
@@ -21,11 +17,10 @@ type listDatabasesResponse struct {
 
 // Creates a database with the given name and options
 func (c *Client) CreateDatabase(ctx context.Context, name string, options map[string]string) (err error) {
-	return c.sendRequest(ctx,
+	return c.sendMultipartJsonRequest(ctx,
 		http.MethodPost,
 		"/admin/databases",
-		&createDatabaseRequest{
-			Root: createDatabaseRequestRoot{Name: name}},
+		map[string]any{"root": &createDatabaseRequest{Name: name}},
 		nil,
 	)
 }

@@ -15,7 +15,7 @@ func (c *Client) GetRolePermissions(ctx context.Context, name string) ([]Permiss
 	var response getRolePermissionsRolesResponse
 
 	return response.Permissions, c.sendRequest(ctx,
-		http.MethodPut,
+		http.MethodGet,
 		fmt.Sprintf("/admin/permissions/role/%s", name),
 		nil,
 		&response,

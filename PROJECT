@@ -1,17 +1,43 @@
 domain: vshn.ch
-layout: go.kubebuilder.io/v2
+layout:
+- go.kubebuilder.io/v2
+plugins:
+  manifests.sdk.operatorframework.io/v2: {}
+  scorecard.sdk.operatorframework.io/v2: {}
 projectName: stardog-userrole-operator
 repo: github.com/vshn/stardog-userrole-operator
 resources:
-- group: stardog
+- domain: vshn.ch
+  group: stardog
   kind: StardogRole
+  path: github.com/vshn/stardog-userrole-operator/api/v1alpha1
   version: v1alpha1
-- group: stardog
+- domain: vshn.ch
+  group: stardog
   kind: StardogUser
+  path: github.com/vshn/stardog-userrole-operator/api/v1alpha1
   version: v1alpha1
-- group: stardog
+- domain: vshn.ch
+  group: stardog
   kind: StardogInstance
+  path: github.com/vshn/stardog-userrole-operator/api/v1alpha1
   version: v1alpha1
-version: 3-alpha
-plugins:
-  go.sdk.operatorframework.io/v2-alpha: {}
+- api:
+    crdVersion: v1beta1
+    namespaced: true
+  controller: true
+  domain: vshn.ch
+  group: stardog
+  kind: Database
+  path: github.com/vshn/stardog-userrole-operator/api/v1beta1
+  version: v1beta1
+- api:
+    crdVersion: v1beta1
+    namespaced: true
+  controller: true
+  domain: vshn.ch
+  group: stardog
+  kind: Instance
+  path: github.com/vshn/stardog-userrole-operator/api/v1beta1
+  version: v1beta1
+version: "3"

@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/vshn/stardog-userrole-operator/stardogrest"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/errors"
@@ -19,6 +18,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	. "github.com/vshn/stardog-userrole-operator/api/v1alpha1"
+	"github.com/vshn/stardog-userrole-operator/stardogrest"
 )
 
 // StardogRoleReconciler reconciles a StardogRole object

@@ -2,4 +2,6 @@
 resources:
 - stardog_v1alpha1_stardogrole.yaml
 - stardog_v1alpha1_stardoguser.yaml
+- stardog_v1beta1_database.yaml
+- stardog_v1beta1_instance.yaml
 # +kubebuilder:scaffold:manifestskustomizesamples

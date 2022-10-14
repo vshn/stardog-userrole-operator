@@ -1,12 +1,14 @@
 package stardogapi
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
+	"mime/multipart"
 	"net/http"
+	"net/textproto"
 	"time"
 )
 
@@ -35,27 +37,20 @@ func NewClient(username, password, baseURL string) *Client {
 	}
 }
 
-// Send an HTTP request to the Stardog server and write the response to the body
-// Decodes the returned error message and includes it in the error
+// Send an HTTP request to the Stardog server and decode the JSON response (incl. JSON errors)
 func (c *Client) sendRequest(ctx context.Context, method string, path string, body any, response any) error {
-	req, err := http.NewRequestWithContext(ctx, method, fmt.Sprintf("%s%s", c.BaseURL, path), nil)
+	bodyBuffer := &bytes.Buffer{}
+
+	err := json.NewEncoder(bodyBuffer).Encode(body)
 	if err != nil {
 		return err
 	}
 
-	req.SetBasicAuth(c.Username, c.Password)
-
-	if body != nil {
-		pipeReader, pipeWriter := io.Pipe()
-
-		go func() error {
-			defer pipeWriter.Close()
-
-			return json.NewEncoder(pipeWriter).Encode(body)
-		}()
-
-		req.Body = pipeReader
+	req, err := http.NewRequestWithContext(ctx, method, fmt.Sprintf("%s%s", c.BaseURL, path), bodyBuffer)
+	if err != nil {
+		return err
 	}
+	req.SetBasicAuth(c.Username, c.Password)
 
 	res, err := c.HTTPClient.Do(req)
 	if err != nil {
@@ -68,6 +63,63 @@ func (c *Client) sendRequest(ctx context.Context, method string, path string, bo
 		var errRes errorResponse
 		if err = json.NewDecoder(res.Body).Decode(&errRes); err == nil {
 			return errors.New(errRes.Message)
+		}
+
+		return fmt.Errorf("unknown error with status code: %d", res.StatusCode)
+	}
+
+	if response != nil {
+		if err = json.NewDecoder(res.Body).Decode(&response); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// Send a multipart HTTP request to the Stardog server and decode the JSON response (incl. JSON errors)
+func (c *Client) sendMultipartJsonRequest(ctx context.Context, method string, path string, body map[string]any, response any) error {
+	bodyBuffer := &bytes.Buffer{}
+	multipartWriter := multipart.NewWriter(bodyBuffer)
+
+	for k, v := range body {
+		h := make(textproto.MIMEHeader)
+		h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="%s"`, k))
+		h.Set("Content-Type", "application/json")
+		field, err := multipartWriter.CreatePart(h)
+		if err != nil {
+			return err
+		}
+
+		err = json.NewEncoder(field).Encode(v)
+		if err != nil {
+			return err
+		}
+	}
+
+	err := multipartWriter.Close()
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequestWithContext(ctx, method, fmt.Sprintf("%s%s", c.BaseURL, path), bodyBuffer)
+	if err != nil {
+		return err
+	}
+	req.SetBasicAuth(c.Username, c.Password)
+	req.Header.Set("Content-Type", multipartWriter.FormDataContentType())
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+
+	defer res.Body.Close()
+
+	if res.StatusCode < http.StatusOK || res.StatusCode >= http.StatusBadRequest {
+		var errRes errorResponse
+		if err = json.NewDecoder(res.Body).Decode(&errRes); err == nil {
+			return fmt.Errorf("%s: %s", errRes.Code, errRes.Message)
 		}
 
 		return fmt.Errorf("unknown error with status code: %d", res.StatusCode)
