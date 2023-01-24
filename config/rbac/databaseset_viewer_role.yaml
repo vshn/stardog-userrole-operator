@@ -1,0 +1,20 @@
+# permissions for end users to view databasesets.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: databaseset-viewer-role
+rules:
+- apiGroups:
+  - stardog.vshn.ch
+  resources:
+  - databasesets
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - stardog.vshn.ch
+  resources:
+  - databasesets/status
+  verbs:
+  - get

@@ -1,24 +1,16 @@
 package controllers
 
 import (
-	"context"
-	"errors"
 	"fmt"
 	"os"
 	"reflect"
 	"strings"
-	"sync"
 	"time"
 
 	. "github.com/vshn/stardog-userrole-operator/api/v1alpha1"
-	stardogv1beta1 "github.com/vshn/stardog-userrole-operator/api/v1beta1"
-	"github.com/vshn/stardog-userrole-operator/pkg/stardogapi"
 	"github.com/vshn/stardog-userrole-operator/stardogrest"
-	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	types "k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var (
@@ -185,30 +177,4 @@ func equals(permissionTypeA stardogrest.Permission, permissionTypeB StardogPermi
 	}
 
 	return action && resourceType && resources
-}
-
-var apiClientMap = sync.Map{}
-
-func getStardogApiClient(ctx context.Context, client client.Client, instance *stardogv1beta1.Instance) (*stardogapi.Client, error) {
-	var apiClient any
-
-	if val, ok := apiClientMap.Load(instance.Spec.URL); ok {
-		apiClient = val
-	} else {
-		credentialSecret := &corev1.Secret{}
-		err := client.Get(ctx, types.NamespacedName{Namespace: instance.Spec.AdminCredentialRef.Namespace, Name: instance.Spec.AdminCredentialRef.Name}, credentialSecret)
-		if err != nil {
-			return nil, err
-		}
-
-		client := stardogapi.NewClient(instance.Spec.AdminCredentialRef.Key, string(credentialSecret.Data[instance.Spec.AdminCredentialRef.Key]), instance.Spec.URL)
-
-		apiClient, _ = apiClientMap.LoadOrStore(instance.Spec.URL, client)
-	}
-
-	if t, ok := apiClient.(*stardogapi.Client); ok {
-		return t, nil
-	} else {
-		return nil, errors.New("getStardogApiClient failed")
-	}
 }

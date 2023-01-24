@@ -7,12 +7,14 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/sethvargo/go-password/password"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/strings/slices"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	stardogv1beta1 "github.com/vshn/stardog-userrole-operator/api/v1beta1"
@@ -47,164 +49,167 @@ type User struct {
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.6.4/pkg/reconcile
 func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = context.Background()
-	r.Log = r.Log.WithValues("database", req.NamespacedName)
 	// TODO track connected external resources in status
 
 	database := &stardogv1beta1.Database{}
 	err := r.Get(ctx, req.NamespacedName, database)
 	if err != nil {
-		r.Log.Error(err, "error getting database")
+		if errors.IsNotFound(err) {
+			return ctrl.Result{}, nil
+		}
 		return ctrl.Result{}, err
 	}
 
-	for _, instanceRef := range database.Spec.Instances {
-		r.Log = r.Log.WithValues("instance", instanceRef)
+	instance := &stardogv1beta1.Instance{}
+	err = r.Get(ctx, types.NamespacedName{Name: database.Spec.InstanceRef.Name, Namespace: database.Namespace}, instance)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
 
-		instance := &stardogv1beta1.Instance{}
+	credentialSecret := &corev1.Secret{}
+	err = r.Get(ctx, types.NamespacedName{Name: instance.Spec.AdminCredentialRef.Name, Namespace: database.Namespace}, credentialSecret)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
 
-		r.Get(ctx, types.NamespacedName{Namespace: instanceRef.Namespace, Name: instanceRef.Name}, instance)
+	apiClient := stardogapi.NewClient(instance.Spec.AdminCredentialRef.Key, string(credentialSecret.Data[instance.Spec.AdminCredentialRef.Key]), instance.Spec.URL)
 
-		apiClient, err := getStardogApiClient(ctx, r.Client, instance)
+	liveDatabases, err := apiClient.ListDatabases(ctx)
+	if err != nil {
+		r.Log.Error(err, "error listing databases")
+		return ctrl.Result{}, err
+	}
+
+	if !slices.Contains(liveDatabases, database.Spec.DatabaseName) {
+		err = apiClient.CreateDatabase(ctx, database.Spec.DatabaseName, nil)
 		if err != nil {
-			r.Log.Error(err, "error creating API client")
-			break
+			r.Log.Error(err, "error creating database")
+			return ctrl.Result{}, err
 		}
+		r.Log.Info("created Stardog database", "name", database.Spec.DatabaseName)
+	}
 
-		liveDatabases, err := apiClient.ListDatabases(ctx)
-		if err != nil {
-			r.Log.Error(err, "error listing databases")
-			break
-		}
-
-		if !slices.Contains(liveDatabases, req.Name) {
-			err = apiClient.CreateDatabase(ctx, req.Name, nil)
+	// Generate and save credentials
+	secret := &corev1.Secret{}
+	secretName := fmt.Sprintf("%s-%s-credentials", database.Spec.DatabaseName, instance.Name)
+	err = r.Get(ctx, types.NamespacedName{Name: secretName, Namespace: database.Namespace}, secret)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			secret = &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      secretName,
+					Namespace: database.Namespace,
+				}}
+			err = controllerutil.SetControllerReference(database, secret, r.Scheme)
 			if err != nil {
-				r.Log.Error(err, "error creating database")
-				break
+				return ctrl.Result{}, err
 			}
-		}
 
-		// Generate and save credentials
-		secret := &v1.Secret{}
-
-		secretName := fmt.Sprintf("%s-%s-credentials", req.Name, instance.Name)
-
-		err = r.Get(ctx, types.NamespacedName{Namespace: req.Namespace, Name: secretName}, secret)
-
-		if err != nil {
-			err = client.IgnoreNotFound(err)
+			readPassword, err := password.Generate(20, 5, 0, false, false)
 			if err != nil {
-				r.Log.Error(err, fmt.Sprintf("error getting Secret %s/%s", req.Namespace, secretName))
-				break
+				r.Log.Error(err, "generation of password for read user failed", "db", database.Spec.DatabaseName)
+				return ctrl.Result{}, err
+			}
+
+			writePassword, err := password.Generate(20, 5, 0, false, false)
+			if err != nil {
+				r.Log.Error(err, "generation of password for write user failed", "db", database.Spec.DatabaseName)
+				return ctrl.Result{}, err
+			}
+
+			secret.StringData = map[string]string{}
+
+			secret.StringData[fmt.Sprintf("%s-read", database.Spec.DatabaseName)] = readPassword
+			secret.StringData[fmt.Sprintf("%s-write", database.Spec.DatabaseName)] = writePassword
+
+			err = r.Create(ctx, secret)
+			if err != nil {
+				r.Log.Error(err, fmt.Sprintf("error creating Secret %s/%s", database.Namespace, secretName))
+				return ctrl.Result{}, err
 			} else {
-				// TODO add managed by operator label
-				secret = &v1.Secret{ObjectMeta: metav1.ObjectMeta{Namespace: req.Namespace, Name: secretName}}
-
-				readPassword, err := password.Generate(20, 5, 0, false, false)
-				if err != nil {
-					r.Log.Error(err, "generation of password for read user failed", "db", req.Name)
-					break
-				}
-
-				writePassword, err := password.Generate(20, 5, 0, false, false)
-				if err != nil {
-					r.Log.Error(err, "generation of password for write user failed", "db", req.Name)
-					break
-				}
-
-				secret.StringData = map[string]string{}
-
-				secret.StringData[fmt.Sprintf("%s-read", req.Name)] = readPassword
-				secret.StringData[fmt.Sprintf("%s-write", req.Name)] = writePassword
-
-				err = r.Create(ctx, secret)
-				if err != nil {
-					r.Log.Error(err, fmt.Sprintf("error creating Secret %s/%s", req.Namespace, secretName))
-					break
-				} else {
-					r.Log.Info("Created credential secret", "db", req.Name)
-				}
+				r.Log.Info("created credential secret", "db", database.Spec.DatabaseName)
 			}
-		}
-
-		readName := fmt.Sprintf("%s-read", req.Name)
-		writeName := fmt.Sprintf("%s-write", req.Name)
-
-		err = r.Get(ctx, types.NamespacedName{Namespace: req.Namespace, Name: secretName}, secret)
-		if err != nil {
-			r.Log.Error(err, "error getting secret", "secret", secretName)
-			break
-		}
-
-		users := []User{{name: readName, password: string(secret.Data[readName])}, {name: writeName, password: string(secret.Data[writeName])}}
-
-		err = r.createUsers(ctx, apiClient, users)
-		if err != nil {
-			r.Log.Error(err, "error creating users", "users", users)
-			break
-		}
-
-		roles := []string{readName, writeName}
-		err = r.createRoles(ctx, apiClient, roles)
-		if err != nil {
-			r.Log.Error(err, "error creating roles", "roles", roles)
-			break
-		}
-
-		readPermissions := []stardogapi.Permission{
-			{ResourceType: "db", Action: "READ", Resources: []string{req.Name}},
-			{ResourceType: "metadata", Action: "READ", Resources: []string{req.Name}},
-		}
-
-		writePermissions := []stardogapi.Permission{
-			{ResourceType: "db", Action: "WRITE", Resources: []string{req.Name}},
-			{ResourceType: "metadata", Action: "WRITE", Resources: []string{req.Name}},
-		}
-
-		// TODO remove unwanted permissions?
-		err = r.addPermissions(ctx, apiClient, readName, readPermissions)
-		if err != nil {
-			r.Log.Error(err, "adding permission to role failed", "role", readName, "permission", readPermissions)
-			break
-		}
-		err = r.addPermissions(ctx, apiClient, writeName, writePermissions)
-		if err != nil {
-			r.Log.Error(err, "adding permission to role failed", "role", writeName, "permission", writePermissions)
-			break
-		}
-
-		// assign roles
-		readUserRoles, err := apiClient.GetUserRoles(ctx, readName)
-		if err != nil {
-			r.Log.Error(err, "error getting user roles", "user", readName)
-			break
-		}
-
-		if len(readUserRoles) != 1 || readUserRoles[0] != readName {
-			err = apiClient.SetUserRoles(ctx, readName, []string{readName})
-			if err != nil {
-				r.Log.Error(err, "error assigning roles to user", "user", readName, "roles", readUserRoles)
-				break
-			}
-		}
-
-		// TODO check if we actually need read when assigning write
-		writeUserRoles, err := apiClient.GetUserRoles(ctx, writeName)
-		if err != nil {
-			r.Log.Error(err, "error getting user roles", "user", writeName)
-			break
-		}
-
-		if len(writeUserRoles) != 2 || writeUserRoles[0] != readName || writeUserRoles[1] != writeName {
-			err = apiClient.SetUserRoles(ctx, writeName, []string{readName, writeName})
-			if err != nil {
-				r.Log.Error(err, "error assigning roles to user", "user", readName, "roles", readUserRoles)
-				break
-			}
+		} else {
+			r.Log.Error(err, fmt.Sprintf("error getting Secret %s/%s", database.Namespace, secretName))
+			return ctrl.Result{}, err
 		}
 	}
 
-	return ctrl.Result{}, err
+	readName := fmt.Sprintf("%s-read", database.Spec.DatabaseName)
+	writeName := fmt.Sprintf("%s-write", database.Spec.DatabaseName)
+
+	err = r.Get(ctx, types.NamespacedName{Name: secretName, Namespace: database.Namespace}, secret)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	users := []User{{name: readName, password: string(secret.Data[readName])}, {name: writeName, password: string(secret.Data[writeName])}}
+
+	err = r.createUsers(ctx, apiClient, users)
+	if err != nil {
+		r.Log.Error(err, "error creating users", "users", users)
+		return ctrl.Result{}, err
+	}
+
+	roles := []string{readName, writeName}
+	err = r.createRoles(ctx, apiClient, roles)
+	if err != nil {
+		r.Log.Error(err, "error creating roles", "roles", roles)
+		return ctrl.Result{}, err
+	}
+
+	readPermissions := []stardogapi.Permission{
+		{ResourceType: "db", Action: "READ", Resources: []string{database.Spec.DatabaseName}},
+		{ResourceType: "metadata", Action: "READ", Resources: []string{database.Spec.DatabaseName}},
+	}
+
+	writePermissions := []stardogapi.Permission{
+		{ResourceType: "db", Action: "WRITE", Resources: []string{database.Spec.DatabaseName}},
+		{ResourceType: "metadata", Action: "WRITE", Resources: []string{database.Spec.DatabaseName}},
+	}
+
+	// TODO remove unwanted permissions?
+	err = r.addPermissions(ctx, apiClient, readName, readPermissions)
+	if err != nil {
+		r.Log.Error(err, "adding permission to role failed", "role", readName, "permission", readPermissions)
+		return ctrl.Result{}, err
+	}
+	err = r.addPermissions(ctx, apiClient, writeName, writePermissions)
+	if err != nil {
+		r.Log.Error(err, "adding permission to role failed", "role", writeName, "permission", writePermissions)
+		return ctrl.Result{}, err
+	}
+
+	// assign roles
+	readUserRoles, err := apiClient.GetUserRoles(ctx, readName)
+	if err != nil {
+		r.Log.Error(err, "error getting user roles", "user", readName)
+		return ctrl.Result{}, err
+	}
+
+	if len(readUserRoles) != 1 || readUserRoles[0] != readName {
+		err = apiClient.SetUserRoles(ctx, readName, []string{readName})
+		if err != nil {
+			r.Log.Error(err, "error assigning roles to user", "user", readName, "roles", readUserRoles)
+			return ctrl.Result{}, err
+		}
+	}
+
+	writeUserRoles, err := apiClient.GetUserRoles(ctx, writeName)
+	if err != nil {
+		r.Log.Error(err, "error getting user roles", "user", writeName)
+		return ctrl.Result{}, err
+	}
+
+	if len(writeUserRoles) != 2 || writeUserRoles[0] != readName || writeUserRoles[1] != writeName {
+		err = apiClient.SetUserRoles(ctx, writeName, []string{readName, writeName})
+		if err != nil {
+			r.Log.Error(err, "error assigning roles to user", "user", readName, "roles", readUserRoles)
+			return ctrl.Result{}, err
+		}
+	}
+
+	return ctrl.Result{}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.

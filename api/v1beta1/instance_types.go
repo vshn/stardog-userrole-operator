@@ -17,14 +17,13 @@ type InstanceSpec struct {
 
 // SecretKeyRef defines a reference to a Secret
 type SecretKeyRef struct {
-	Name      string `json:"name,omitempty"`
-	Namespace string `json:"namespace,omitempty"`
-	Key       string `json:"key,omitempty"`
+	Name string `json:"name,omitempty"`
+	Key  string `json:"key,omitempty"`
 }
 
 // InstanceStatus defines the observed state of Instance
 type InstanceStatus struct {
-	Available metav1.Condition `json:"available,omitempty"`
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
 //+kubebuilder:object:root=true
@@ -50,4 +49,9 @@ type InstanceList struct {
 
 func init() {
 	SchemeBuilder.Register(&Instance{}, &InstanceList{})
+}
+
+// StardogInstanceRef defines a reference to a Stardog instance
+type StardogInstanceRef struct {
+	Name string `json:"name,omitempty"`
 }

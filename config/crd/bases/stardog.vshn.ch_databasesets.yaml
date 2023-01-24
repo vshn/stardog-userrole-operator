@@ -5,20 +5,20 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.9.0
   creationTimestamp: null
-  name: databases.stardog.vshn.ch
+  name: databasesets.stardog.vshn.ch
 spec:
   group: stardog.vshn.ch
   names:
-    kind: Database
-    listKind: DatabaseList
-    plural: databases
-    singular: database
+    kind: DatabaseSet
+    listKind: DatabaseSetList
+    plural: databasesets
+    singular: databaseset
   scope: Namespaced
   versions:
   - name: v1beta1
     schema:
       openAPIV3Schema:
-        description: Database is the Schema for the databases API
+        description: DatabaseSet is the Schema for the databasesets API
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -35,20 +35,22 @@ spec:
           spec:
             description: DatabaseSpec defines the desired state of the Database
             properties:
-              databaseName:
-                type: string
               namedGraphPrefix:
                 type: string
-              stardogInstanceRef:
-                description: Instance contains the reference to the Stardog instance
+              stardogInstanceRefs:
+                description: Instances contains the references to the Stardog instances
                   the database should exist in
-                properties:
-                  name:
-                    type: string
-                type: object
+                items:
+                  description: StardogInstanceRef defines a reference to a Stardog
+                    instance
+                  properties:
+                    name:
+                      type: string
+                  type: object
+                type: array
             type: object
           status:
-            description: DatabaseStatus defines the observed state of the Database
+            description: DatabaseSetStatus defines the observed state of the Database
             properties:
               conditions:
                 items:

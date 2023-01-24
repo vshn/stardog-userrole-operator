@@ -7,17 +7,14 @@ import (
 // DatabaseSpec defines the desired state of the Database
 type DatabaseSpec struct {
 	//+kubebuilder:validation:required
-	// Instances contains the references to the Stardog instances the database should exist in
-	Instances []StardogInstanceRef `json:"stardogInstanceRef,omitempty"`
+	DatabaseName string `json:"databaseName,omitempty"`
+
+	//+kubebuilder:validation:required
+	// Instance contains the reference to the Stardog instance the database should exist in
+	InstanceRef StardogInstanceRef `json:"stardogInstanceRef,omitempty"`
 
 	//+kubebuilder:validation:optional
-	NamedGraphPrefix string `json:"url,omitempty"`
-}
-
-// StardogInstanceRef defines a reference to a Stardog instance
-type StardogInstanceRef struct {
-	Name      string `json:"name,omitempty"`
-	Namespace string `json:"namespace,omitempty"`
+	NamedGraphPrefix string `json:"namedGraphPrefix,omitempty"`
 }
 
 // DatabaseStatus defines the observed state of the Database

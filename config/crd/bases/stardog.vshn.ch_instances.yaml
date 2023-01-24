@@ -43,8 +43,6 @@ spec:
                     type: string
                   name:
                     type: string
-                  namespace:
-                    type: string
                 type: object
               url:
                 description: URL is the API URL of the Stardog instance

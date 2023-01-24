@@ -28,6 +28,26 @@ rules:
 - apiGroups:
   - stardog.vshn.ch
   resources:
+  - databasesets
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - stardog.vshn.ch
+  resources:
+  - databasesets/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - stardog.vshn.ch
+  resources:
   - instances
   verbs:
   - create

@@ -6,12 +6,15 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	types "k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	stardogv1beta1 "github.com/vshn/stardog-userrole-operator/api/v1beta1"
+	"github.com/vshn/stardog-userrole-operator/pkg/stardogapi"
 )
 
 // InstanceReconciler reconciles a Instance object
@@ -35,47 +38,32 @@ type InstanceReconciler struct {
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.6.4/pkg/reconcile
 func (r *InstanceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = context.Background()
-	r.Log = r.Log.WithValues("instance", req.NamespacedName)
 
 	instance := &stardogv1beta1.Instance{}
 	err := r.Get(ctx, req.NamespacedName, instance)
 	if err != nil {
 		r.Log.Error(err, "error getting instance")
-		instance.Status.Available = v1.Condition{
-			Status: v1.ConditionFalse, Reason: "Unavailable",
-			Message:            fmt.Sprintf("instance could not be retrieved: %s", err),
-			LastTransitionTime: v1.NewTime(time.Now()),
-		}
-		err = r.Status().Update(ctx, instance)
-		if err != nil {
-			r.Log.Error(err, "error updating status")
-		}
 		return ctrl.Result{}, err
 	}
 
-	client, err := getStardogApiClient(ctx, r.Client, instance)
+	credentialSecret := &corev1.Secret{}
+	err = r.Get(ctx, types.NamespacedName{Namespace: req.Namespace, Name: instance.Spec.AdminCredentialRef.Name}, credentialSecret)
 	if err != nil {
-		r.Log.Error(err, "error creating API client")
-		instance.Status.Available = v1.Condition{
-			Status: v1.ConditionUnknown, Reason: "NoApiClient",
-			Message:            fmt.Sprintf("error creating API client: %s", err),
-			LastTransitionTime: v1.NewTime(time.Now()),
-		}
-		err = r.Status().Update(ctx, instance)
-		if err != nil {
-			r.Log.Error(err, "error updating status")
-		}
+		r.Log.Error(err, "error getting instance credentials")
 		return ctrl.Result{}, err
 	}
 
-	_, err = client.ListDatabases(ctx)
+	apiClient := stardogapi.NewClient(instance.Spec.AdminCredentialRef.Key, string(credentialSecret.Data[instance.Spec.AdminCredentialRef.Key]), instance.Spec.URL)
+
+	_, err = apiClient.ListDatabases(ctx)
 	if err != nil {
 		r.Log.Error(err, "error getting databases")
-		instance.Status.Available = v1.Condition{
+		instance.Status.Conditions = []v1.Condition{{
+			Type:   "Available",
 			Status: v1.ConditionFalse, Reason: "Unavailable",
 			Message:            fmt.Sprintf("error getting databases, user might be lacking permissions in Stardog: %s", err),
 			LastTransitionTime: v1.NewTime(time.Now()),
-		}
+		}}
 		err = r.Status().Update(ctx, instance)
 		if err != nil {
 			r.Log.Error(err, "error updating status")
@@ -83,12 +71,13 @@ func (r *InstanceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return ctrl.Result{}, err
 	}
 
-	if instance.Status.Available.Status != v1.ConditionTrue {
-		instance.Status.Available = v1.Condition{
+	if len(instance.Status.Conditions) == 0 || instance.Status.Conditions[0].Status != v1.ConditionTrue {
+		instance.Status.Conditions = []v1.Condition{{
+			Type:   "Available",
 			Status: v1.ConditionTrue, Reason: "Available",
 			Message:            "Instance became available",
 			LastTransitionTime: v1.NewTime(time.Now()),
-		}
+		}}
 		err = r.Status().Update(ctx, instance)
 		if err != nil {
 			r.Log.Error(err, "error updating status")
