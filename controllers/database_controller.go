@@ -60,38 +60,9 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return ctrl.Result{}, err
 	}
 
-	instance := &stardogv1beta1.Instance{}
-	err = r.Get(ctx, types.NamespacedName{Name: database.Spec.InstanceRef.Name, Namespace: database.Namespace}, instance)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
-	credentialSecret := &corev1.Secret{}
-	err = r.Get(ctx, types.NamespacedName{Name: instance.Spec.AdminCredentialRef.Name, Namespace: database.Namespace}, credentialSecret)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
-	apiClient := stardogapi.NewClient(instance.Spec.AdminCredentialRef.Key, string(credentialSecret.Data[instance.Spec.AdminCredentialRef.Key]), instance.Spec.URL)
-
-	liveDatabases, err := apiClient.ListDatabases(ctx)
-	if err != nil {
-		r.Log.Error(err, "error listing databases")
-		return ctrl.Result{}, err
-	}
-
-	if !slices.Contains(liveDatabases, database.Spec.DatabaseName) {
-		err = apiClient.CreateDatabase(ctx, database.Spec.DatabaseName, nil)
-		if err != nil {
-			r.Log.Error(err, "error creating database")
-			return ctrl.Result{}, err
-		}
-		r.Log.Info("created Stardog database", "name", database.Spec.DatabaseName)
-	}
-
 	// Generate and save credentials
 	secret := &corev1.Secret{}
-	secretName := fmt.Sprintf("%s-%s-credentials", database.Spec.DatabaseName, instance.Name)
+	secretName := fmt.Sprintf("%s-%s-credentials", database.Spec.DatabaseName, database.Spec.InstanceRef.Name)
 	err = r.Get(ctx, types.NamespacedName{Name: secretName, Namespace: database.Namespace}, secret)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -144,6 +115,36 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	}
 
 	users := []User{{name: readName, password: string(secret.Data[readName])}, {name: writeName, password: string(secret.Data[writeName])}}
+
+	// Create Stardog resources
+	instance := &stardogv1beta1.Instance{}
+	err = r.Get(ctx, types.NamespacedName{Name: database.Spec.InstanceRef.Name, Namespace: database.Namespace}, instance)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	credentialSecret := &corev1.Secret{}
+	err = r.Get(ctx, types.NamespacedName{Name: instance.Spec.AdminCredentialRef.Name, Namespace: database.Namespace}, credentialSecret)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	apiClient := stardogapi.NewClient(instance.Spec.AdminCredentialRef.Key, string(credentialSecret.Data[instance.Spec.AdminCredentialRef.Key]), instance.Spec.URL)
+
+	liveDatabases, err := apiClient.ListDatabases(ctx)
+	if err != nil {
+		r.Log.Error(err, "error listing databases")
+		return ctrl.Result{}, err
+	}
+
+	if !slices.Contains(liveDatabases, database.Spec.DatabaseName) {
+		err = apiClient.CreateDatabase(ctx, database.Spec.DatabaseName, nil)
+		if err != nil {
+			r.Log.Error(err, "error creating database")
+			return ctrl.Result{}, err
+		}
+		r.Log.Info("created Stardog database", "name", database.Spec.DatabaseName)
+	}
 
 	err = r.createUsers(ctx, apiClient, users)
 	if err != nil {
