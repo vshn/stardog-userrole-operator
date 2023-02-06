@@ -15,3 +15,9 @@ type Permission struct {
 	ResourceType string   `json:"resource_type"`
 	Resources    []string `json:"resource"`
 }
+
+// UserCredentials is a helper for CreateUser()
+type UserCredentials struct {
+	Name     string
+	Password string
+}

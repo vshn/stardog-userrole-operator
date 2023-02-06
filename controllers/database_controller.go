@@ -3,7 +3,6 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/go-logr/logr"
 	"github.com/sethvargo/go-password/password"
@@ -30,23 +29,10 @@ type DatabaseReconciler struct {
 	Scheme *runtime.Scheme
 }
 
-type User struct {
-	name     string
-	password string
-}
-
-//+kubebuilder:rbac:groups=stardog.vshn.ch,resources=databases,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=stardog.vshn.ch,resources=databases,verbs=get;list;watch;update;patch
 //+kubebuilder:rbac:groups=stardog.vshn.ch,resources=databases/status,verbs=get;update;patch
 
-// Reconcile is part of the main kubernetes reconciliation loop which aims to
-// move the current state of the cluster closer to the desired state.
-// TODO(user): Modify the Reconcile function to compare the state specified by
-// the Database object against the actual cluster state, and then
-// perform operations to make the cluster state reflect the state specified by
-// the user.
-//
-// For more details, check Reconcile and its Result here:
-// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.6.4/pkg/reconcile
+// Reconcile manages the Stardog resources for a Database object
 func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = context.Background()
 	// TODO track connected external resources in status
@@ -61,60 +47,14 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	}
 
 	// Generate and save credentials
-	secret := &corev1.Secret{}
 	secretName := fmt.Sprintf("%s-%s-credentials", database.Spec.DatabaseName, database.Spec.InstanceRef.Name)
-	err = r.Get(ctx, types.NamespacedName{Name: secretName, Namespace: database.Namespace}, secret)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			secret = &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      secretName,
-					Namespace: database.Namespace,
-				}}
-			err = controllerutil.SetControllerReference(database, secret, r.Scheme)
-			if err != nil {
-				return ctrl.Result{}, err
-			}
-
-			readPassword, err := password.Generate(20, 5, 0, false, false)
-			if err != nil {
-				r.Log.Error(err, "generation of password for read user failed", "db", database.Spec.DatabaseName)
-				return ctrl.Result{}, err
-			}
-
-			writePassword, err := password.Generate(20, 5, 0, false, false)
-			if err != nil {
-				r.Log.Error(err, "generation of password for write user failed", "db", database.Spec.DatabaseName)
-				return ctrl.Result{}, err
-			}
-
-			secret.StringData = map[string]string{}
-
-			secret.StringData[fmt.Sprintf("%s-read", database.Spec.DatabaseName)] = readPassword
-			secret.StringData[fmt.Sprintf("%s-write", database.Spec.DatabaseName)] = writePassword
-
-			err = r.Create(ctx, secret)
-			if err != nil {
-				r.Log.Error(err, fmt.Sprintf("error creating Secret %s/%s", database.Namespace, secretName))
-				return ctrl.Result{}, err
-			} else {
-				r.Log.Info("created credential secret", "db", database.Spec.DatabaseName)
-			}
-		} else {
-			r.Log.Error(err, fmt.Sprintf("error getting Secret %s/%s", database.Namespace, secretName))
-			return ctrl.Result{}, err
-		}
-	}
-
 	readName := fmt.Sprintf("%s-read", database.Spec.DatabaseName)
 	writeName := fmt.Sprintf("%s-write", database.Spec.DatabaseName)
 
-	err = r.Get(ctx, types.NamespacedName{Name: secretName, Namespace: database.Namespace}, secret)
+	err = r.createCredentials(ctx, database, secretName, readName, writeName)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-
-	users := []User{{name: readName, password: string(secret.Data[readName])}, {name: writeName, password: string(secret.Data[writeName])}}
 
 	// Create Stardog resources
 	instance := &stardogv1beta1.Instance{}
@@ -123,20 +63,18 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return ctrl.Result{}, err
 	}
 
-	credentialSecret := &corev1.Secret{}
-	err = r.Get(ctx, types.NamespacedName{Name: instance.Spec.AdminCredentialRef.Name, Namespace: database.Namespace}, credentialSecret)
+	apiClient, err := NewStardogAPIClientFromInstance(ctx, r.Client, instance)
 	if err != nil {
+		r.Log.Error(err, "error creating new Stardog API client")
 		return ctrl.Result{}, err
 	}
 
-	apiClient := stardogapi.NewClient(instance.Spec.AdminCredentialRef.Key, string(credentialSecret.Data[instance.Spec.AdminCredentialRef.Key]), instance.Spec.URL)
-
+	// Create database if it doesn't exist
 	liveDatabases, err := apiClient.ListDatabases(ctx)
 	if err != nil {
 		r.Log.Error(err, "error listing databases")
 		return ctrl.Result{}, err
 	}
-
 	if !slices.Contains(liveDatabases, database.Spec.DatabaseName) {
 		err = apiClient.CreateDatabase(ctx, database.Spec.DatabaseName, nil)
 		if err != nil {
@@ -146,14 +84,26 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		r.Log.Info("created Stardog database", "name", database.Spec.DatabaseName)
 	}
 
-	err = r.createUsers(ctx, apiClient, users)
+	// Get user credentials from Secret
+	secret := &corev1.Secret{}
+	err = r.Get(ctx, types.NamespacedName{Name: secretName, Namespace: database.Namespace}, secret)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	users := []stardogapi.UserCredentials{
+		{Name: readName, Password: string(secret.Data[readName])},
+		{Name: writeName, Password: string(secret.Data[writeName])},
+	}
+
+	err = stardogapi.CreateUsers(ctx, apiClient, users)
 	if err != nil {
 		r.Log.Error(err, "error creating users", "users", users)
 		return ctrl.Result{}, err
 	}
 
 	roles := []string{readName, writeName}
-	err = r.createRoles(ctx, apiClient, roles)
+	err = stardogapi.CreateRoles(ctx, apiClient, roles)
 	if err != nil {
 		r.Log.Error(err, "error creating roles", "roles", roles)
 		return ctrl.Result{}, err
@@ -169,13 +119,12 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		{ResourceType: "metadata", Action: "WRITE", Resources: []string{database.Spec.DatabaseName}},
 	}
 
-	// TODO remove unwanted permissions?
-	err = r.addPermissions(ctx, apiClient, readName, readPermissions)
+	err = stardogapi.AddPermissions(ctx, apiClient, readName, readPermissions)
 	if err != nil {
 		r.Log.Error(err, "adding permission to role failed", "role", readName, "permission", readPermissions)
 		return ctrl.Result{}, err
 	}
-	err = r.addPermissions(ctx, apiClient, writeName, writePermissions)
+	err = stardogapi.AddPermissions(ctx, apiClient, writeName, writePermissions)
 	if err != nil {
 		r.Log.Error(err, "adding permission to role failed", "role", writeName, "permission", writePermissions)
 		return ctrl.Result{}, err
@@ -220,69 +169,51 @@ func (r *DatabaseReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func comparePermission(x, y stardogapi.Permission) bool {
-	if x.ResourceType == y.ResourceType {
-		if x.Action == y.Action {
-			return slices.Equal(x.Resources, y.Resources)
-		}
-	}
-	return false
-}
-
-func (r *DatabaseReconciler) addPermissions(ctx context.Context, apiClient *stardogapi.Client, role string, permissions []stardogapi.Permission) error {
-	for _, permission := range permissions {
-		exists := false
-		rolePermissions, err := apiClient.GetRolePermissions(ctx, role)
-		if err != nil {
+// Generate and save credentials for Database
+func (r *DatabaseReconciler) createCredentials(ctx context.Context, database *stardogv1beta1.Database, secretName string, readName string, writeName string) error {
+	secret := &corev1.Secret{}
+	err := r.Get(ctx, types.NamespacedName{Name: secretName, Namespace: database.Namespace}, secret)
+	if err != nil {
+		if !errors.IsNotFound(err) {
+			r.Log.Error(err, fmt.Sprintf("error getting Secret %s/%s", database.Namespace, secretName))
 			return err
-		}
-		for _, rolePermission := range rolePermissions {
-			if comparePermission(rolePermission, permission) {
-				exists = true
-				break
-			}
-		}
-
-		if !exists {
-			err = apiClient.AddRolePermission(ctx, role, permission)
+		} else {
+			secret = &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      secretName,
+					Namespace: database.Namespace,
+				}}
+			err = controllerutil.SetControllerReference(database, secret, r.Scheme)
 			if err != nil {
 				return err
 			}
-		}
-	}
-	return nil
-}
 
-func (r *DatabaseReconciler) createRoles(ctx context.Context, apiClient *stardogapi.Client, roles []string) error {
-	for _, role := range roles {
-		activeRoles, err := apiClient.GetRoles(ctx)
-		if err != nil {
-			return err
-		}
-
-		if !slices.Contains(activeRoles, role) {
-			err = apiClient.AddRole(ctx, role)
+			readPassword, err := password.Generate(20, 5, 0, false, false)
 			if err != nil {
+				r.Log.Error(err, "generation of password for read user failed", "db", database.Spec.DatabaseName)
 				return err
 			}
-		}
-	}
-	return nil
-}
 
-func (r *DatabaseReconciler) createUsers(ctx context.Context, apiClient *stardogapi.Client, users []User) error {
-	for _, user := range users {
-		_, err := apiClient.GetUser(ctx, user.name)
-		if err != nil {
-			if strings.Contains(err.Error(), "does not exist") {
-				err = apiClient.AddUser(ctx, user.name, user.password)
-				if err != nil {
-					return err
-				}
+			writePassword, err := password.Generate(20, 5, 0, false, false)
+			if err != nil {
+				r.Log.Error(err, "generation of password for write user failed", "db", database.Spec.DatabaseName)
+				return err
+			}
+
+			secret.StringData = map[string]string{}
+
+			secret.StringData[readName] = readPassword
+			secret.StringData[writeName] = writePassword
+
+			err = r.Create(ctx, secret)
+			if err != nil {
+				r.Log.Error(err, fmt.Sprintf("error creating Secret %s/%s", database.Namespace, secretName))
+				return err
 			} else {
-				return err
+				r.Log.Info("created credential secret", "db", database.Spec.DatabaseName)
 			}
 		}
 	}
+
 	return nil
 }
