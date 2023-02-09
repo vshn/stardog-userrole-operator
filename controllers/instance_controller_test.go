@@ -13,6 +13,9 @@ import (
 
 var _ = Describe("Instance controller", func() {
 	const (
+		timeout  = time.Second * 10
+		interval = time.Second
+
 		InstanceName = "test-instance"
 		Namespace    = "default"
 	)
@@ -48,8 +51,14 @@ var _ = Describe("Instance controller", func() {
 			ctx := context.Background()
 
 			createdInstance := &stardogv1beta1.Instance{}
-			Eventually(k8sClient.Get(ctx, types.NamespacedName{Name: InstanceName, Namespace: Namespace}, createdInstance)).Should(Succeed())
-			Eventually(ctx, len(createdInstance.Status.Conditions)).WithTimeout(60 * time.Second).ShouldNot(BeZero())
+			Eventually(
+				k8sClient.Get(ctx, types.NamespacedName{Name: InstanceName, Namespace: Namespace}, createdInstance),
+			).WithContext(ctx).WithTimeout(timeout).WithPolling(interval).Should(Succeed())
+
+			Eventually(func() int {
+				k8sClient.Get(ctx, types.NamespacedName{Name: InstanceName, Namespace: Namespace}, createdInstance)
+				return len(createdInstance.Status.Conditions)
+			}).WithContext(ctx).WithTimeout(timeout).WithPolling(interval).ShouldNot(BeZero())
 		})
 	})
 })

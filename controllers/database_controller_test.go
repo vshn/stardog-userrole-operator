@@ -14,14 +14,18 @@ import (
 
 var _ = Describe("Database controller", func() {
 	const (
+		timeout  = time.Second * 15
+		interval = time.Second
+
 		DatabaseName       = "foo"
-		InstanceName       = "test-instance"
-		CombinedName       = "foo-test-instance"
-		ExpectedSecretName = "foo-test-instance-credentials"
+		InstanceName       = "prod-instance"
+		CombinedName       = "foo-prod-instance"
+		ExpectedSecretName = "foo-prod-instance-credentials"
 		Namespace          = "default"
 		NamedGraphPrefix   = "http://foobar"
 	)
 	var database *stardogv1beta1.Database
+	var instance *stardogv1beta1.Instance
 
 	BeforeEach(func() {
 		database = &stardogv1beta1.Database{
@@ -41,11 +45,30 @@ var _ = Describe("Database controller", func() {
 				},
 			},
 		}
+		instance = &stardogv1beta1.Instance{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "Instance",
+				APIVersion: "stardog.vshn.ch/v1beta1",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      InstanceName,
+				Namespace: Namespace,
+			},
+			Spec: stardogv1beta1.InstanceSpec{
+				URL: "http://localhost:8080",
+				AdminCredentialRef: stardogv1beta1.SecretKeyRef{
+					Name: "admin-credentials",
+					Key:  "password",
+				},
+			},
+		}
 		Expect(k8sClient.Create(ctx, database)).Should(Succeed())
+		Expect(k8sClient.Create(ctx, instance)).Should(Succeed())
 	})
 
 	AfterEach(func() {
 		Expect(k8sClient.Delete(context.Background(), database)).Should(Succeed())
+		Expect(k8sClient.Delete(context.Background(), instance)).Should(Succeed())
 	})
 
 	Context("When creating a Database", func() {
@@ -54,17 +77,15 @@ var _ = Describe("Database controller", func() {
 			ctx := context.Background()
 
 			createdDatabase := &stardogv1beta1.Database{}
-			Eventually(ctx, func() bool {
-				err := k8sClient.Get(ctx, types.NamespacedName{Name: CombinedName, Namespace: Namespace}, createdDatabase)
-				return err == nil
-			}).WithTimeout(60 * time.Second).Should(BeTrue())
+			Eventually(
+				k8sClient.Get(ctx, types.NamespacedName{Name: CombinedName, Namespace: Namespace}, createdDatabase),
+			).WithContext(ctx).WithTimeout(timeout).WithPolling(interval).Should(Succeed())
 			Expect(createdDatabase.Spec.DatabaseName).Should(Equal(DatabaseName))
 
 			createdCredentialsSecret := &corev1.Secret{}
-			Eventually(ctx, func() bool {
-				err := k8sClient.Get(ctx, types.NamespacedName{Name: ExpectedSecretName, Namespace: Namespace}, createdCredentialsSecret)
-				return err == nil
-			}).WithTimeout(60 * time.Second).Should(BeTrue())
+			Eventually(
+				k8sClient.Get(ctx, types.NamespacedName{Name: ExpectedSecretName, Namespace: Namespace}, createdCredentialsSecret),
+			).WithContext(ctx).WithTimeout(timeout).WithPolling(interval).Should(Succeed())
 		})
 	})
 })
