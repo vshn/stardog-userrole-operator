@@ -18,6 +18,7 @@ import (
 
 	stardogv1beta1 "github.com/vshn/stardog-userrole-operator/api/v1beta1"
 	"github.com/vshn/stardog-userrole-operator/pkg/stardogapi"
+	stardogapiutil "github.com/vshn/stardog-userrole-operator/pkg/stardogapi/util"
 
 	types "k8s.io/apimachinery/pkg/types"
 )
@@ -93,14 +94,14 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		{Name: writeName, Password: string(secret.Data[writeName])},
 	}
 
-	err = stardogapi.CreateUsers(ctx, apiClient, users)
+	err = stardogapiutil.CreateUsers(ctx, apiClient, users)
 	if err != nil {
 		r.Log.Error(err, "error creating users", "users", users)
 		return ctrl.Result{}, err
 	}
 
 	roles := []string{readName, writeName}
-	err = stardogapi.CreateRoles(ctx, apiClient, roles)
+	err = stardogapiutil.CreateRoles(ctx, apiClient, roles)
 	if err != nil {
 		r.Log.Error(err, "error creating roles", "roles", roles)
 		return ctrl.Result{}, err
@@ -116,12 +117,12 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		{ResourceType: "metadata", Action: "WRITE", Resources: []string{database.Spec.DatabaseName}},
 	}
 
-	err = stardogapi.AddPermissions(ctx, apiClient, readName, readPermissions)
+	err = stardogapiutil.AddPermissions(ctx, apiClient, readName, readPermissions)
 	if err != nil {
 		r.Log.Error(err, "adding permission to role failed", "role", readName, "permission", readPermissions)
 		return ctrl.Result{}, err
 	}
-	err = stardogapi.AddPermissions(ctx, apiClient, writeName, writePermissions)
+	err = stardogapiutil.AddPermissions(ctx, apiClient, writeName, writePermissions)
 	if err != nil {
 		r.Log.Error(err, "adding permission to role failed", "role", writeName, "permission", writePermissions)
 		return ctrl.Result{}, err

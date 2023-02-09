@@ -1,4 +1,4 @@
-package stardogapi_test
+package util_test
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/vshn/stardog-userrole-operator/pkg/stardogapi"
 	"github.com/vshn/stardog-userrole-operator/pkg/stardogapi/mock"
+	"github.com/vshn/stardog-userrole-operator/pkg/stardogapi/util"
 )
 
 func TestComparePermission(t *testing.T) {
@@ -23,18 +24,18 @@ func TestComparePermission(t *testing.T) {
 		Resources:    []string{"foobar"},
 	}
 
-	assert.True(t, stardogapi.ComparePermission(x, y))
+	assert.True(t, util.ComparePermission(x, y))
 
 	y.Action = "read"
-	assert.False(t, stardogapi.ComparePermission(x, y))
+	assert.False(t, util.ComparePermission(x, y))
 
 	x.Action = "read"
 	y.ResourceType = "role"
-	assert.False(t, stardogapi.ComparePermission(x, y))
+	assert.False(t, util.ComparePermission(x, y))
 
 	x.ResourceType = "role"
 	y.Resources = []string{"foobar", "foo"}
-	assert.False(t, stardogapi.ComparePermission(x, y))
+	assert.False(t, util.ComparePermission(x, y))
 }
 
 func TestAddPermissions(t *testing.T) {
@@ -58,7 +59,7 @@ func TestAddPermissions(t *testing.T) {
 		Return(nil).
 		Times(2)
 
-	err := stardogapi.AddPermissions(ctx, stardog, "foo-read", readPermissions)
+	err := util.AddPermissions(ctx, stardog, "foo-read", readPermissions)
 	assert.NoError(t, err)
 }
 
@@ -80,7 +81,7 @@ func TestCreateRoles(t *testing.T) {
 		Return(nil).
 		Times(2)
 
-	err := stardogapi.CreateRoles(ctx, stardog, roles)
+	err := util.CreateRoles(ctx, stardog, roles)
 	assert.NoError(t, err)
 
 	// Don't create roles that already exist
@@ -94,7 +95,7 @@ func TestCreateRoles(t *testing.T) {
 		Return(nil).
 		Times(1)
 
-	err = stardogapi.CreateRoles(ctx, stardog, roles)
+	err = util.CreateRoles(ctx, stardog, roles)
 	assert.NoError(t, err)
 }
 
@@ -125,7 +126,7 @@ func TestCreateUsers(t *testing.T) {
 		Return(nil).
 		Times(2)
 
-	err := stardogapi.CreateUsers(ctx, stardog, users)
+	err := util.CreateUsers(ctx, stardog, users)
 	assert.NoError(t, err)
 
 	// Don't create users that already exist
@@ -143,7 +144,7 @@ func TestCreateUsers(t *testing.T) {
 		Return(nil).
 		Times(1)
 
-	err = stardogapi.CreateUsers(ctx, stardog, users)
+	err = util.CreateUsers(ctx, stardog, users)
 	assert.NoError(t, err)
 }
 

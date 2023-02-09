@@ -1,4 +1,4 @@
-package stardogapi
+package util
 
 import (
 	"context"
@@ -7,10 +7,12 @@ import (
 	"strings"
 
 	"golang.org/x/exp/slices"
+
+	"github.com/vshn/stardog-userrole-operator/pkg/stardogapi"
 )
 
 // Compares permissions
-func ComparePermission(x, y Permission) bool {
+func ComparePermission(x, y stardogapi.Permission) bool {
 	if x.ResourceType == y.ResourceType {
 		if x.Action == y.Action {
 			return slices.Equal(x.Resources, y.Resources)
@@ -20,7 +22,7 @@ func ComparePermission(x, y Permission) bool {
 }
 
 // Adds permissions to a role
-func AddPermissions(ctx context.Context, stardogAPI StardogAPI, role string, permissions []Permission) error {
+func AddPermissions(ctx context.Context, stardogAPI stardogapi.StardogAPI, role string, permissions []stardogapi.Permission) error {
 	rolePermissions, err := stardogAPI.GetRolePermissions(ctx, role)
 	if err != nil {
 		return err
@@ -46,7 +48,7 @@ func AddPermissions(ctx context.Context, stardogAPI StardogAPI, role string, per
 }
 
 // Create multiple roles
-func CreateRoles(ctx context.Context, stardogAPI StardogAPI, roles []string) error {
+func CreateRoles(ctx context.Context, stardogAPI stardogapi.StardogAPI, roles []string) error {
 	activeRoles, err := stardogAPI.GetRoles(ctx)
 	if err != nil {
 		return err
@@ -64,7 +66,7 @@ func CreateRoles(ctx context.Context, stardogAPI StardogAPI, roles []string) err
 }
 
 // Create multiple users
-func CreateUsers(ctx context.Context, stardogAPI StardogAPI, users []UserCredentials) error {
+func CreateUsers(ctx context.Context, stardogAPI stardogapi.StardogAPI, users []stardogapi.UserCredentials) error {
 	for _, user := range users {
 		_, err := stardogAPI.GetUser(ctx, user.Name)
 		if err != nil {
