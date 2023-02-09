@@ -171,45 +171,44 @@ func (r *DatabaseReconciler) SetupWithManager(mgr ctrl.Manager) error {
 func (r *DatabaseReconciler) createCredentials(ctx context.Context, database *stardogv1beta1.Database, secretName string, readName string, writeName string) error {
 	secret := &corev1.Secret{}
 	err := r.Get(ctx, types.NamespacedName{Name: secretName, Namespace: database.Namespace}, secret)
-	if err != nil {
-		if !errors.IsNotFound(err) {
-			r.Log.Error(err, fmt.Sprintf("error getting Secret %s/%s", database.Namespace, secretName))
+
+	if !errors.IsNotFound(err) {
+		r.Log.Error(err, fmt.Sprintf("error getting Secret %s/%s", database.Namespace, secretName))
+		return err
+	} else {
+		secret = &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      secretName,
+				Namespace: database.Namespace,
+			}}
+		err = controllerutil.SetControllerReference(database, secret, r.Scheme)
+		if err != nil {
+			return err
+		}
+
+		readPassword, err := password.Generate(20, 5, 0, false, false)
+		if err != nil {
+			r.Log.Error(err, "generation of password for read user failed", "db", database.Spec.DatabaseName)
+			return err
+		}
+
+		writePassword, err := password.Generate(20, 5, 0, false, false)
+		if err != nil {
+			r.Log.Error(err, "generation of password for write user failed", "db", database.Spec.DatabaseName)
+			return err
+		}
+
+		secret.StringData = map[string]string{}
+
+		secret.StringData[readName] = readPassword
+		secret.StringData[writeName] = writePassword
+
+		err = r.Create(ctx, secret)
+		if err != nil {
+			r.Log.Error(err, fmt.Sprintf("error creating Secret %s/%s", database.Namespace, secretName))
 			return err
 		} else {
-			secret = &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      secretName,
-					Namespace: database.Namespace,
-				}}
-			err = controllerutil.SetControllerReference(database, secret, r.Scheme)
-			if err != nil {
-				return err
-			}
-
-			readPassword, err := password.Generate(20, 5, 0, false, false)
-			if err != nil {
-				r.Log.Error(err, "generation of password for read user failed", "db", database.Spec.DatabaseName)
-				return err
-			}
-
-			writePassword, err := password.Generate(20, 5, 0, false, false)
-			if err != nil {
-				r.Log.Error(err, "generation of password for write user failed", "db", database.Spec.DatabaseName)
-				return err
-			}
-
-			secret.StringData = map[string]string{}
-
-			secret.StringData[readName] = readPassword
-			secret.StringData[writeName] = writePassword
-
-			err = r.Create(ctx, secret)
-			if err != nil {
-				r.Log.Error(err, fmt.Sprintf("error creating Secret %s/%s", database.Namespace, secretName))
-				return err
-			} else {
-				r.Log.Info("created credential secret", "db", database.Spec.DatabaseName)
-			}
+			r.Log.Info("created credential secret", "db", database.Spec.DatabaseName)
 		}
 	}
 
