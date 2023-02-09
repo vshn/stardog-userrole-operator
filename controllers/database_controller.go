@@ -34,9 +34,6 @@ type DatabaseReconciler struct {
 
 // Reconcile manages the Stardog resources for a Database object
 func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = context.Background()
-	// TODO track connected external resources in status
-
 	database := &stardogv1beta1.Database{}
 	err := r.Get(ctx, req.NamespacedName, database)
 	if err != nil {

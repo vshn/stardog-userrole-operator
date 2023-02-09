@@ -62,7 +62,7 @@ func (c *Client) sendRequest(ctx context.Context, method string, path string, bo
 	if res.StatusCode < http.StatusOK || res.StatusCode >= http.StatusBadRequest {
 		var errRes errorResponse
 		if err = json.NewDecoder(res.Body).Decode(&errRes); err == nil {
-			return errors.New(errRes.Message)
+			return fmt.Errorf("error from stardog: %s", errRes.Message)
 		}
 
 		return fmt.Errorf("unknown error with status code: %d", res.StatusCode)

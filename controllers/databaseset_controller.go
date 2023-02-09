@@ -30,8 +30,6 @@ type DatabaseSetReconciler struct {
 
 // Reconcile manages the Database objects for a DatabaseSet
 func (r *DatabaseSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = context.Background()
-
 	databaseSet := &stardogv1beta1.DatabaseSet{}
 	err := r.Get(ctx, req.NamespacedName, databaseSet)
 	if err != nil {

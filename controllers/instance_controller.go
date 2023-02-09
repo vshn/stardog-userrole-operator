@@ -25,8 +25,6 @@ type InstanceReconciler struct {
 
 // Reconcile verifies if Stardog instances are available and can be used by other resources
 func (r *InstanceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = context.Background()
-
 	instance := &stardogv1beta1.Instance{}
 	err := r.Get(ctx, req.NamespacedName, instance)
 	if err != nil {
