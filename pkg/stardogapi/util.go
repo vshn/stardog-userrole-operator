@@ -2,6 +2,8 @@ package stardogapi
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"strings"
 
 	"golang.org/x/exp/slices"
@@ -36,7 +38,7 @@ func AddPermissions(ctx context.Context, stardogAPI StardogAPI, role string, per
 		if !exists {
 			err = stardogAPI.AddRolePermission(ctx, role, permission)
 			if err != nil {
-				return err
+				return errors.Join(fmt.Errorf("error adding permission %s to role %s", permission, role), err)
 			}
 		}
 	}
@@ -54,7 +56,7 @@ func CreateRoles(ctx context.Context, stardogAPI StardogAPI, roles []string) err
 		if !slices.Contains(activeRoles, role) {
 			err = stardogAPI.AddRole(ctx, role)
 			if err != nil {
-				return err
+				return errors.Join(fmt.Errorf("error creating role %s", role), err)
 			}
 		}
 	}
@@ -69,10 +71,10 @@ func CreateUsers(ctx context.Context, stardogAPI StardogAPI, users []UserCredent
 			if strings.Contains(err.Error(), "does not exist") {
 				err = stardogAPI.AddUser(ctx, user.Name, user.Password)
 				if err != nil {
-					return err
+					return errors.Join(fmt.Errorf("error creating user %s", user), err)
 				}
 			} else {
-				return err
+				return errors.Join(fmt.Errorf("error getting user %s", user), err)
 			}
 		}
 	}
