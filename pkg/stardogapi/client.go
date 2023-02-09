@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"mime/multipart"
 	"net/http"
@@ -57,24 +56,7 @@ func (c *Client) sendRequest(ctx context.Context, method string, path string, bo
 		return err
 	}
 
-	defer res.Body.Close()
-
-	if res.StatusCode < http.StatusOK || res.StatusCode >= http.StatusBadRequest {
-		var errRes errorResponse
-		if err = json.NewDecoder(res.Body).Decode(&errRes); err == nil {
-			return fmt.Errorf("error from stardog: %s", errRes.Message)
-		}
-
-		return fmt.Errorf("unknown error with status code: %d", res.StatusCode)
-	}
-
-	if response != nil {
-		if err = json.NewDecoder(res.Body).Decode(&response); err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return handleResponse(res, &response)
 }
 
 // Send a multipart HTTP request to the Stardog server and decode the JSON response (incl. JSON errors)
@@ -114,21 +96,24 @@ func (c *Client) sendMultipartJsonRequest(ctx context.Context, method string, pa
 		return err
 	}
 
-	defer res.Body.Close()
+	return handleResponse(res, &response)
+}
 
-	if res.StatusCode < http.StatusOK || res.StatusCode >= http.StatusBadRequest {
+// Decodes the response into the responseStruct or returns a decoded error
+func handleResponse(response *http.Response, responseStruct *any) error {
+	defer response.Body.Close()
+
+	if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusBadRequest {
 		var errRes errorResponse
-		if err = json.NewDecoder(res.Body).Decode(&errRes); err == nil {
-			return fmt.Errorf("%s: %s", errRes.Code, errRes.Message)
+		if err := json.NewDecoder(response.Body).Decode(&errRes); err == nil {
+			return fmt.Errorf("error from stardog (status: %d): %s", response.StatusCode, errRes.Message)
 		}
 
-		return fmt.Errorf("unknown error with status code: %d", res.StatusCode)
+		return fmt.Errorf("unknown error with status code: %d", response.StatusCode)
 	}
 
-	if response != nil {
-		if err = json.NewDecoder(res.Body).Decode(&response); err != nil {
-			return err
-		}
+	if err := json.NewDecoder(response.Body).Decode(responseStruct); err != nil {
+		return err
 	}
 
 	return nil

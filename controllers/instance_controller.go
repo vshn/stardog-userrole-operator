@@ -35,6 +35,13 @@ func (r *InstanceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	apiClient, err := NewStardogAPIClientFromInstance(ctx, r.Client, instance)
 	if err != nil {
 		r.Log.Error(err, "error creating new Stardog API client")
+		instance.Status.Conditions = []v1.Condition{
+			createInstanceStatusUnavailableCondition(fmt.Sprintf("error creating new Stardog API client: %s", err)),
+		}
+		err = r.Status().Update(ctx, instance)
+		if err != nil {
+			r.Log.Error(err, "error updating status")
+		}
 		return ctrl.Result{}, err
 	}
 
