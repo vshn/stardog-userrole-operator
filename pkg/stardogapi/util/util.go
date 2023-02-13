@@ -2,7 +2,6 @@ package util
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -25,7 +24,7 @@ func ComparePermission(x, y stardogapi.Permission) bool {
 func AddPermissions(ctx context.Context, stardogAPI stardogapi.StardogAPI, role string, permissions []stardogapi.Permission) error {
 	rolePermissions, err := stardogAPI.GetRolePermissions(ctx, role)
 	if err != nil {
-		return err
+		return fmt.Errorf("error getting role permissions %s: %w", role, err)
 	}
 
 	for _, permission := range permissions {
@@ -40,7 +39,7 @@ func AddPermissions(ctx context.Context, stardogAPI stardogapi.StardogAPI, role 
 		if !exists {
 			err = stardogAPI.AddRolePermission(ctx, role, permission)
 			if err != nil {
-				return errors.Join(fmt.Errorf("error adding permission %s to role %s", permission, role), err)
+				return fmt.Errorf("error adding permission %s to role %s: %w", permission, role, err)
 			}
 		}
 	}
@@ -51,14 +50,14 @@ func AddPermissions(ctx context.Context, stardogAPI stardogapi.StardogAPI, role 
 func CreateRoles(ctx context.Context, stardogAPI stardogapi.StardogAPI, roles []string) error {
 	activeRoles, err := stardogAPI.GetRoles(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("error getting roles: %w", err)
 	}
 
 	for _, role := range roles {
 		if !slices.Contains(activeRoles, role) {
 			err = stardogAPI.AddRole(ctx, role)
 			if err != nil {
-				return errors.Join(fmt.Errorf("error creating role %s", role), err)
+				return fmt.Errorf("error creating role %s: %w", role, err)
 			}
 		}
 	}
@@ -73,10 +72,10 @@ func CreateUsers(ctx context.Context, stardogAPI stardogapi.StardogAPI, users []
 			if strings.Contains(err.Error(), "does not exist") {
 				err = stardogAPI.AddUser(ctx, user.Name, user.Password)
 				if err != nil {
-					return errors.Join(fmt.Errorf("error creating user %s", user), err)
+					return fmt.Errorf("error creating user %s: %w", user, err)
 				}
 			} else {
-				return errors.Join(fmt.Errorf("error getting user %s", user), err)
+				return fmt.Errorf("error getting user %s: %w", user, err)
 			}
 		}
 	}
