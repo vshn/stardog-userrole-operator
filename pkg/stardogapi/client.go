@@ -112,8 +112,10 @@ func handleResponse(response *http.Response, responseStruct *any) error {
 		return fmt.Errorf("unknown error with status code: %d", response.StatusCode)
 	}
 
-	if err := json.NewDecoder(response.Body).Decode(responseStruct); err != nil {
-		return err
+	if *responseStruct != nil {
+		if err := json.NewDecoder(response.Body).Decode(responseStruct); err != nil {
+			return err
+		}
 	}
 
 	return nil

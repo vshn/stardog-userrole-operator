@@ -67,6 +67,33 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return ctrl.Result{}, err
 	}
 
+	// Delete Stardog resources
+	finalizer := "stardog.vshn.ch/finalizer"
+	if database.DeletionTimestamp.IsZero() {
+		// add finalizer
+		if !controllerutil.ContainsFinalizer(database, finalizer) {
+			controllerutil.AddFinalizer(database, finalizer)
+			if err := r.Update(ctx, database); err != nil {
+				r.Log.Error(err, "error updating finalizer")
+				return ctrl.Result{}, err
+			}
+		}
+	} else {
+		if controllerutil.ContainsFinalizer(database, finalizer) {
+			if err := r.handleDeletion(ctx, apiClient, database, []string{readName, writeName}, []string{readName, writeName}); err != nil {
+				return ctrl.Result{}, err
+			}
+
+			controllerutil.RemoveFinalizer(database, finalizer)
+			if err := r.Update(ctx, database); err != nil {
+				r.Log.Error(err, "error updating finalizer")
+				return ctrl.Result{}, err
+			}
+		}
+
+		return ctrl.Result{}, nil
+	}
+
 	// Create database if it doesn't exist
 	liveDatabases, err := apiClient.ListDatabases(ctx)
 	if err != nil {
@@ -212,6 +239,30 @@ func (r *DatabaseReconciler) createCredentials(ctx context.Context, database *st
 		return err
 	} else {
 		r.Log.Info("created credential secret", "namespace", secret.Namespace, "name", secret.Name)
+	}
+
+	return nil
+}
+
+// Handle deletion of all Stardog resources related to the database
+func (r *DatabaseReconciler) handleDeletion(ctx context.Context, apiClient stardogapi.StardogAPI, database *stardogv1beta1.Database, users []string, roles []string) error {
+	err := apiClient.DropDatabase(ctx, database.Spec.DatabaseName)
+	if err != nil {
+		return fmt.Errorf("error dropping database %s/%s: %w", database.Namespace, database.Name, err)
+	}
+
+	for _, user := range users {
+		err = apiClient.DeleteUser(ctx, user)
+		if err != nil {
+			return fmt.Errorf("error deleting user %s: %w", user, err)
+		}
+	}
+
+	for _, role := range roles {
+		err = apiClient.DeleteRole(ctx, role)
+		if err != nil {
+			return fmt.Errorf("error deleting role %s: %w", role, err)
+		}
 	}
 
 	return nil
