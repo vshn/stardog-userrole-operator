@@ -51,9 +51,9 @@ var _ = Describe("Instance controller", func() {
 			ctx := context.Background()
 
 			createdInstance := &stardogv1beta1.Instance{}
-			Eventually(
-				k8sClient.Get(ctx, types.NamespacedName{Name: InstanceName, Namespace: Namespace}, createdInstance),
-			).WithContext(ctx).WithTimeout(timeout).WithPolling(interval).Should(Succeed())
+			Eventually(func() error {
+				return k8sClient.Get(ctx, types.NamespacedName{Name: InstanceName, Namespace: Namespace}, createdInstance)
+			}).WithContext(ctx).WithTimeout(timeout).WithPolling(interval).Should(Succeed())
 
 			Eventually(func() int {
 				k8sClient.Get(ctx, types.NamespacedName{Name: InstanceName, Namespace: Namespace}, createdInstance)

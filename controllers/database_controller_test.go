@@ -77,15 +77,15 @@ var _ = Describe("Database controller", func() {
 			ctx := context.Background()
 
 			createdDatabase := &stardogv1beta1.Database{}
-			Eventually(
-				k8sClient.Get(ctx, types.NamespacedName{Name: CombinedName, Namespace: Namespace}, createdDatabase),
-			).WithContext(ctx).WithTimeout(timeout).WithPolling(interval).Should(Succeed())
+			Eventually(func() error {
+				return k8sClient.Get(ctx, types.NamespacedName{Name: CombinedName, Namespace: Namespace}, createdDatabase)
+			}).WithContext(ctx).WithTimeout(timeout).WithPolling(interval).Should(Succeed())
 			Expect(createdDatabase.Spec.DatabaseName).Should(Equal(DatabaseName))
 
 			createdCredentialsSecret := &corev1.Secret{}
-			Eventually(
-				k8sClient.Get(ctx, types.NamespacedName{Name: ExpectedSecretName, Namespace: Namespace}, createdCredentialsSecret),
-			).WithContext(ctx).WithTimeout(timeout).WithPolling(interval).Should(Succeed())
+			Eventually(func() error {
+				return k8sClient.Get(ctx, types.NamespacedName{Name: ExpectedSecretName, Namespace: Namespace}, createdCredentialsSecret)
+			}).WithContext(ctx).WithTimeout(timeout).WithPolling(interval).Should(Succeed())
 		})
 	})
 })
