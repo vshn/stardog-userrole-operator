@@ -1,15 +1,23 @@
 package controllers
 
 import (
+	"context"
 	"fmt"
-	. "github.com/vshn/stardog-userrole-operator/api/v1alpha1"
-	"github.com/vshn/stardog-userrole-operator/stardogrest"
-	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"os"
 	"reflect"
 	"strings"
 	"time"
+
+	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	types "k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	. "github.com/vshn/stardog-userrole-operator/api/v1alpha1"
+	stardogv1beta1 "github.com/vshn/stardog-userrole-operator/api/v1beta1"
+	"github.com/vshn/stardog-userrole-operator/pkg/stardogapi"
+	"github.com/vshn/stardog-userrole-operator/stardogrest"
 )
 
 var (
@@ -75,6 +83,24 @@ func createStatusConditionTerminating(err error) StardogCondition {
 		Reason:             ReasonTerminating,
 		Message:            err.Error(),
 	}
+}
+
+func createInstanceStatusAvailableCondition(message string) metav1.Condition {
+	return metav1.Condition{
+		Type:               "Available",
+		Status:             metav1.ConditionTrue,
+		Reason:             "Available",
+		Message:            message,
+		LastTransitionTime: metav1.NewTime(time.Now()),
+	}
+}
+
+func createInstanceStatusUnavailableCondition(message string) metav1.Condition {
+	condition := createInstanceStatusAvailableCondition(message)
+	condition.Status = metav1.ConditionFalse
+	condition.Reason = "Unavailable"
+
+	return condition
 }
 
 func getSecretData(secret v1.Secret, value string) (string, error) {
@@ -176,4 +202,14 @@ func equals(permissionTypeA stardogrest.Permission, permissionTypeB StardogPermi
 	}
 
 	return action && resourceType && resources
+}
+
+func NewStardogAPIClientFromInstance(ctx context.Context, client client.Client, instance *stardogv1beta1.Instance) (*stardogapi.Client, error) {
+	credentialSecret := &corev1.Secret{}
+	err := client.Get(ctx, types.NamespacedName{Namespace: instance.Namespace, Name: instance.Spec.AdminCredentialRef.Name}, credentialSecret)
+	if err != nil {
+		return nil, err
+	}
+
+	return stardogapi.NewClient(instance.Spec.AdminCredentialRef.Key, string(credentialSecret.Data[instance.Spec.AdminCredentialRef.Key]), instance.Spec.URL), nil
 }

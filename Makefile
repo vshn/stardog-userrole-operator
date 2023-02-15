@@ -137,19 +137,9 @@ $(ENVTEST): $(LOCALBIN)
 dist: # release snapshot
 	goreleaser release --snapshot --rm-dist --skip-sign
 
-find-autorest: ## find or install autorest
-ifeq (, $(shell which autorest))
-	@{ \
-	set -e ;\
-	NODE_PATH=$(shell ./find-node-or-install) \
-	PATH=$$NODE_PATH:$(shell echo $$PATH) \
-	npm install autorest ;\
-	}
-AUTOREST=node_modules/autorest/entrypoints/app.js
-else
-AUTOREST=$(shell which autorest)
-endif
+MOCKGEN ?= $(LOCALBIN)/mockgen
 
-autorest: find-autorest ## build client stub
-	$(AUTOREST) --go --package-name="github.com/vshn/stardog-userrole-operator/stardogrest" --namespace="stardogrest" --input-file="stardogrest/stardog_swagger.yaml" --output-folder="stardogrest"
-	go fmt ./...
+.PHONY: mockgen
+mockgen: $(MOCKGEN) ## Download mockgen locally if necessary.
+$(MOCKGEN): $(LOCALBIN)
+	GOBIN=$(LOCALBIN) go install github.com/golang/mock/mockgen@v1.6.0
