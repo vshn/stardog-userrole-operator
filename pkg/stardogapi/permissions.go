@@ -2,8 +2,8 @@ package stardogapi
 
 import (
 	"context"
-	"fmt"
 	"net/http"
+	"path"
 )
 
 type getRolePermissionsRolesResponse struct {
@@ -16,7 +16,7 @@ func (c *Client) GetRolePermissions(ctx context.Context, name string) ([]Permiss
 
 	return response.Permissions, c.sendRequest(ctx,
 		http.MethodGet,
-		fmt.Sprintf("/admin/permissions/role/%s", name),
+		path.Join("/admin/permissions/role/", sanitizePathValue(name)),
 		nil,
 		&response,
 	)
@@ -26,7 +26,7 @@ func (c *Client) GetRolePermissions(ctx context.Context, name string) ([]Permiss
 func (c *Client) AddRolePermission(ctx context.Context, name string, permission Permission) (err error) {
 	return c.sendRequest(ctx,
 		http.MethodPut,
-		fmt.Sprintf("/admin/permissions/role/%s", name),
+		path.Join("/admin/permissions/role/", sanitizePathValue(name)),
 		&permission,
 		nil,
 	)
@@ -36,7 +36,7 @@ func (c *Client) AddRolePermission(ctx context.Context, name string, permission 
 func (c *Client) DeleteRolePermission(ctx context.Context, name string, permission Permission) (err error) {
 	return c.sendRequest(ctx,
 		http.MethodPost,
-		fmt.Sprintf("/admin/permissions/role/%s/delete", name),
+		path.Join("/admin/permissions/role/", sanitizePathValue(name), "/delete"),
 		&permission,
 		nil,
 	)

@@ -2,8 +2,8 @@ package stardogapi
 
 import (
 	"context"
-	"fmt"
 	"net/http"
+	"path"
 )
 
 // TODO extend
@@ -29,7 +29,7 @@ func (c *Client) CreateDatabase(ctx context.Context, name string, options map[st
 func (c *Client) DropDatabase(ctx context.Context, name string) (err error) {
 	return c.sendRequest(ctx,
 		http.MethodDelete,
-		fmt.Sprintf("/admin/databases/%s", name),
+		path.Join("/admin/databases/", sanitizePathValue(name)),
 		nil,
 		nil,
 	)

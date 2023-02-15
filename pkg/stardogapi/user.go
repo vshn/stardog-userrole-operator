@@ -2,8 +2,8 @@ package stardogapi
 
 import (
 	"context"
-	"fmt"
 	"net/http"
+	"path"
 	"strings"
 )
 
@@ -33,7 +33,7 @@ func (c *Client) AddUser(ctx context.Context, name, password string) (err error)
 func (c *Client) DeleteUser(ctx context.Context, name string) (err error) {
 	return c.sendRequest(ctx,
 		http.MethodDelete,
-		fmt.Sprintf("/admin/users/%s", name),
+		path.Join("/admin/users/", sanitizePathValue(name)),
 		nil,
 		nil,
 	)
@@ -43,7 +43,7 @@ func (c *Client) DeleteUser(ctx context.Context, name string) (err error) {
 func (c *Client) GetUser(ctx context.Context, name string) (user User, err error) {
 	return user, c.sendRequest(ctx,
 		http.MethodGet,
-		fmt.Sprintf("/admin/users/%s", name),
+		path.Join("/admin/users/", sanitizePathValue(name)),
 		nil,
 		&user,
 	)
@@ -53,7 +53,7 @@ func (c *Client) GetUser(ctx context.Context, name string) (user User, err error
 func (c *Client) SetUserRoles(ctx context.Context, name string, roles []string) (err error) {
 	return c.sendRequest(ctx,
 		http.MethodPut,
-		fmt.Sprintf("/admin/users/%s/roles", name),
+		path.Join("/admin/users/", sanitizePathValue(name), "/roles"),
 		&userRolesRequestAndResponse{Roles: roles},
 		nil,
 	)
@@ -65,7 +65,7 @@ func (c *Client) GetUserRoles(ctx context.Context, name string) (roles []string,
 
 	return response.Roles, c.sendRequest(ctx,
 		http.MethodGet,
-		fmt.Sprintf("/admin/users/%s/roles", name),
+		path.Join("/admin/users/", sanitizePathValue(name), "/roles"),
 		nil,
 		&response,
 	)

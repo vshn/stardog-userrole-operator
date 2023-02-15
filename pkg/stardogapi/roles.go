@@ -2,8 +2,8 @@ package stardogapi
 
 import (
 	"context"
-	"fmt"
 	"net/http"
+	"path"
 )
 
 type addRoleRequest struct {
@@ -40,7 +40,7 @@ func (c *Client) AddRole(ctx context.Context, name string) (err error) {
 func (c *Client) DeleteRole(ctx context.Context, name string) (err error) {
 	return c.sendRequest(ctx,
 		http.MethodDelete,
-		fmt.Sprintf("/admin/roles/%s", name),
+		path.Join("/admin/roles/", sanitizePathValue(name)),
 		nil,
 		nil,
 	)
