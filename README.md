@@ -40,7 +40,7 @@ make autorest
 minikube start
 
 # Create values.yaml (fill in actual image registry credentials)
-<<EOF > values.yaml
+cat <<EOF > values.yaml
 image:
   username: "foo"
   password: "supersecret"
