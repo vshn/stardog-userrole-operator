@@ -23,3 +23,41 @@ make autorest
 [releases]: https://github.com/vshn/stardog-userrole-operator/releases
 [license]: https://github.com/vshn/stardog-userrole-operator/blob/master/LICENSE
 [dockerhub]: https://hub.docker.com/r/vshn/stardog-userrole-operator
+
+## Local Development
+
+### Prerequisites
+
+- minikube
+- helm
+- kubectl
+- Stardog image registry credentials
+- Stardog license
+
+### Init local dev environment
+
+```
+minikube start
+
+# Create values.yaml (fill in actual image registry credentials)
+<<EOF > values.yaml
+image:
+  username: "foo"
+  password: "supersecret"
+
+stardog:
+  adminPassword: "admin"
+
+replicaCount: 1
+
+zookeeper:
+  enabled: false
+EOF
+
+# Provide Stardog license key
+kubectl create secret generic stardog-license --from-file stardog-license-key.bin=stardog-license-key.bin
+
+# Install Stardog
+helm repo add appuio https://charts.appuio.ch
+helm install stardog appuio/stardog -f values.yaml
+```
