@@ -34,7 +34,7 @@ make autorest
 - Stardog image registry credentials
 - Stardog license
 
-See https://wiki.vshn.net/x/PIuVEw (VSHN internal) on how to retrieve registry credentials and licenses for Stardog.
+See [the VSHN wiki (internal)](https://wiki.vshn.net/x/PIuVEw) for details on how to retrieve registry credentials and licenses for Stardog.
 
 ### Init local dev environment
 
