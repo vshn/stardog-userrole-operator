@@ -11,7 +11,7 @@ require (
 	github.com/onsi/ginkgo/v2 v2.8.1
 	github.com/onsi/gomega v1.26.0
 	github.com/sethvargo/go-password v0.2.0
-	github.com/stretchr/testify v1.8.1
+	github.com/stretchr/testify v1.8.4
 	golang.org/x/exp v0.0.0-20230425010034-47ecfdc1ba53
 	k8s.io/api v0.26.1
 	k8s.io/apimachinery v0.26.1
