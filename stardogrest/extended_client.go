@@ -4,38 +4,29 @@ import (
 	"crypto/tls"
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/tracing"
-	httptransport "github.com/go-openapi/runtime/client"
-	"github.com/go-openapi/strfmt"
+	client2 "github.com/go-openapi/runtime/client"
 	"github.com/vshn/stardog-userrole-operator/stardogrest/client"
-	"github.com/vshn/stardog-userrole-operator/stardogrest/client/roles"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
-	"os"
 	"time"
 )
 
 type ExtendedBaseClient struct {
-	stardog client.StardogClient
-	BaseClient
+	client client.StardogClient
 }
 
 func (c *ExtendedBaseClient) SetConnection(url, username, password string) {
-	test := client.New(httptransport.New("", "", nil), strfmt.Default)
-	cred := httptransport.BasicAuth(os.Getenv("API_ACCESS_TOKEN"), "a")
-
-	test.Roles.ListRoles(&roles.ListRolesParams{}, cred)
-	test.Users.ChangePassword()
-	c.RetryDuration = 3 * time.Second
-	c.RetryAttempts = 1
-	c.BaseClient.Sender = createCustomSender()
-	c.BaseClient.BaseURI = getFullURL(url)
-	c.BaseClient.Authorizer = autorest.NewBasicAuthorizer(username, password)
+	c.client.
+	config := client.DefaultTransportConfig().WithHost(url)
+	cl := client.NewHTTPClientWithConfig(nil, config)
+	auth := client2.BasicAuth(username, password)
+	cl.Users.ChangePassword(nil, auth)
 }
 
 func NewExtendedBaseClient() *ExtendedBaseClient {
 	return &ExtendedBaseClient{
-		BaseClient: New(),
+		client: *client.NewHTTPClient(nil),
 	}
 }
 
