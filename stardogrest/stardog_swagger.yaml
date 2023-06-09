@@ -255,7 +255,7 @@ paths:
   "/users/{user}/roles/{role}":
     delete:
       summary: Remove a role from a user.
-      operationId: removeRole
+      operationId: removeRoleOfUser
       tags:
       - users
         roles
@@ -643,7 +643,7 @@ definitions:
     required:
     - superuser
     properties:
-      enabled:
+      superuser:
         type: boolean
   User:
     required:

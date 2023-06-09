@@ -4,22 +4,33 @@ import (
 	"crypto/tls"
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/tracing"
+	httptransport "github.com/go-openapi/runtime/client"
+	"github.com/go-openapi/strfmt"
+	"github.com/vshn/stardog-userrole-operator/stardogrest/client"
+	"github.com/vshn/stardog-userrole-operator/stardogrest/client/roles"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
+	"os"
 	"time"
 )
 
 type ExtendedBaseClient struct {
+	stardog client.StardogClient
 	BaseClient
 }
 
-func (client *ExtendedBaseClient) SetConnection(url, username, password string) {
-	client.RetryDuration = 3 * time.Second
-	client.RetryAttempts = 1
-	client.BaseClient.Sender = createCustomSender()
-	client.BaseClient.BaseURI = getFullURL(url)
-	client.BaseClient.Authorizer = autorest.NewBasicAuthorizer(username, password)
+func (c *ExtendedBaseClient) SetConnection(url, username, password string) {
+	test := client.New(httptransport.New("", "", nil), strfmt.Default)
+	cred := httptransport.BasicAuth(os.Getenv("API_ACCESS_TOKEN"), "a")
+
+	test.Roles.ListRoles(&roles.ListRolesParams{}, cred)
+	test.Users.ChangePassword()
+	c.RetryDuration = 3 * time.Second
+	c.RetryAttempts = 1
+	c.BaseClient.Sender = createCustomSender()
+	c.BaseClient.BaseURI = getFullURL(url)
+	c.BaseClient.Authorizer = autorest.NewBasicAuthorizer(username, password)
 }
 
 func NewExtendedBaseClient() *ExtendedBaseClient {
