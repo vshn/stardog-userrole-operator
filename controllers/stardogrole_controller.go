@@ -3,6 +3,11 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"github.com/vshn/stardog-userrole-operator/stardogrest/client/roles"
+	"github.com/vshn/stardog-userrole-operator/stardogrest/client/roles_permissions"
+	"github.com/vshn/stardog-userrole-operator/stardogrest/client/users_roles"
+	"github.com/vshn/stardog-userrole-operator/stardogrest/models"
+	"k8s.io/utils/pointer"
 	"strings"
 	"time"
 
@@ -18,7 +23,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	. "github.com/vshn/stardog-userrole-operator/api/v1alpha1"
-	"github.com/vshn/stardog-userrole-operator/stardogrest"
 )
 
 // StardogRoleReconciler reconciles a StardogRole object
@@ -50,10 +54,9 @@ func (r *StardogRoleReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 	srr := &StardogRoleReconciliation{
 		reconciliationContext: &ReconciliationContext{
-			context:       ctx,
-			conditions:    make(map[StardogConditionType]StardogCondition),
-			namespace:     namespace.Namespace,
-			stardogClient: stardogrest.NewExtendedBaseClient(),
+			context:    ctx,
+			conditions: make(map[StardogConditionType]StardogCondition),
+			namespace:  namespace.Namespace,
 		},
 		resource: stardogRole,
 	}
@@ -105,7 +108,6 @@ func (r *StardogRoleReconciler) ReconcileStardogRole(srr *StardogRoleReconciliat
 
 func (r *StardogRoleReconciler) syncRole(srr *StardogRoleReconciliation) error {
 	spec := srr.resource.Spec
-	ctx := srr.reconciliationContext.context
 	namespace := srr.reconciliationContext.namespace
 	roleName := spec.RoleName
 	if roleName == "" {
@@ -113,7 +115,7 @@ func (r *StardogRoleReconciler) syncRole(srr *StardogRoleReconciliation) error {
 	}
 
 	r.Log.V(1).Info("init Stardog Client from ", "ref", spec.StardogInstanceRef)
-	err := srr.reconciliationContext.initStardogClientFromRef(r.Client, spec.StardogInstanceRef)
+	auth, err := srr.reconciliationContext.initStardogClientFromRef(r.Client, spec.StardogInstanceRef)
 	if err != nil {
 		return err
 	}
@@ -121,32 +123,37 @@ func (r *StardogRoleReconciler) syncRole(srr *StardogRoleReconciliation) error {
 	stardogClient := srr.reconciliationContext.stardogClient
 
 	r.Log.Info("synchronizing role", "role", roleName)
-	roles, err := stardogClient.ListRoles(ctx)
-	if err != nil {
+	allRoles, err := stardogClient.Roles.ListRoles(nil, auth)
+	if err != nil || !allRoles.IsSuccess() {
 		return fmt.Errorf("cannot list current roles in %s: %v", namespace, err)
 	}
-	if !contains(*roles.Roles, roleName) {
-		_, err = stardogClient.CreateRole(ctx, &stardogrest.Rolename{Rolename: &roleName})
+	if !contains(allRoles.Payload.Roles, roleName) {
+		_, err = stardogClient.Roles.CreateRole(roles.NewCreateRoleParams().WithRole(&models.Rolename{Rolename: &roleName}), auth)
 		if err != nil {
 			return fmt.Errorf("cannot create role in %s/%s: %v", namespace, roleName, err)
 		}
 	}
 
-	var existingPermissions []stardogrest.Permission
-	if contains(*roles.Roles, roleName) {
+	var existingPermissions []*models.Permission
+	if contains(allRoles.Payload.Roles, roleName) {
 		r.Log.V(1).Info("adding permissions to role", "role", roleName)
-		permissionsObject, err := stardogClient.ListRolePermissions(ctx, roleName)
+		roles_permissions.NewListRolePermissionsParams().WithRole(roleName)
+		roles.NewCreateRoleParams().WithRole(&models.Rolename{Rolename: &roleName})
+		permissionsObject, err := stardogClient.RolesPermissions.ListRolePermissions(roles_permissions.NewListRolePermissionsParams().WithRole(roleName), auth)
 		if err != nil {
 			return fmt.Errorf("cannot list permissions for role %s in %s: %v", roleName, namespace, err)
 		}
-		existingPermissions = *permissionsObject.Permissions
+		existingPermissions = permissionsObject.Payload.Permissions
 	}
 
 	var permissionErrors []error
 	permissions := spec.Permissions
 	for _, existingPermission := range existingPermissions {
-		if !containsStardogPermission(permissions, existingPermission) {
-			_, err := stardogClient.RemoveRolePermission(ctx, roleName, existingPermission)
+		if !containsStardogPermission(permissions, *existingPermission) {
+			params := roles_permissions.NewRemoveRolePermissionParams().
+				WithRole(roleName).
+				WithPermission(existingPermission)
+			_, err := stardogClient.RolesPermissions.RemoveRolePermission(params, auth)
 			if err != nil {
 				permissionErrors = append(permissionErrors, err)
 			}
@@ -155,11 +162,13 @@ func (r *StardogRoleReconciler) syncRole(srr *StardogRoleReconciliation) error {
 
 	for _, permission := range permissions {
 		if !containsOperatorPermission(existingPermissions, permission) {
-			_, err := stardogClient.AddRolePermission(ctx, roleName, stardogrest.Permission{
+			perm := &models.Permission{
 				Action:       &permission.Action,
 				ResourceType: &permission.ResourceType,
-				Resource:     &permission.Resources,
-			})
+				Resource:     permission.Resources,
+			}
+			params := roles_permissions.NewAddRolePermissionParams().WithRole(roleName).WithPermission(perm)
+			_, err := stardogClient.RolesPermissions.AddRolePermission(params, auth)
 			if err != nil {
 				permissionErrors = append(permissionErrors, err)
 			}
@@ -222,7 +231,7 @@ func (r *StardogRoleReconciler) updateStatus(srr *StardogRoleReconciliation) err
 func (r *StardogRoleReconciler) deleteStardogRole(srr *StardogRoleReconciliation) error {
 	r.Log.Info(fmt.Sprintf("checking if StardogRole %s is deletable", srr.resource.Name))
 	stardogRole := srr.resource
-	if err := r.finalize(srr, roleFinalizer); err != nil {
+	if err := r.finalize(srr); err != nil {
 		return err
 	}
 	controllerutil.RemoveFinalizer(stardogRole, roleFinalizer)
@@ -233,13 +242,12 @@ func (r *StardogRoleReconciler) deleteStardogRole(srr *StardogRoleReconciliation
 	return nil
 }
 
-func (r *StardogRoleReconciler) finalize(srr *StardogRoleReconciliation, finalizer string) error {
-	ctx := srr.reconciliationContext.context
+func (r *StardogRoleReconciler) finalize(srr *StardogRoleReconciliation) error {
 	spec := srr.resource.Spec
 	namespace := srr.reconciliationContext.namespace
 
 	r.Log.V(1).Info("setup Stardog Client from ", "ref", spec.StardogInstanceRef)
-	err := srr.reconciliationContext.initStardogClientFromRef(r.Client, spec.StardogInstanceRef)
+	auth, err := srr.reconciliationContext.initStardogClientFromRef(r.Client, spec.StardogInstanceRef)
 	if err != nil {
 		return err
 	}
@@ -250,16 +258,18 @@ func (r *StardogRoleReconciler) finalize(srr *StardogRoleReconciliation, finaliz
 	if role == "" {
 		role = srr.resource.Name
 	}
-	rolesObject, err := stardogClient.ListRoleUsers(ctx, role)
+
+	rolesObject, err := stardogClient.UsersRoles.ListRoleUsers(users_roles.NewListRoleUsersParams().WithRole(role), auth)
 	if err != nil {
 		return fmt.Errorf("cannot get current list of roles in %s: %v", namespace, err)
 	}
 
-	if len(*rolesObject.Users) > 0 {
-		return fmt.Errorf("cannot delete role %s as it is used by %s users in %s", role, strings.Join(*rolesObject.Users, ","), namespace)
+	if len(rolesObject.Payload.Users) > 0 {
+		return fmt.Errorf("cannot delete role %s as it is used by %s users in %s", role, strings.Join(rolesObject.Payload.Users, ","), namespace)
 	}
 
-	_, err = srr.reconciliationContext.stardogClient.RemoveRole1(ctx, role, &[]bool{false}[0])
+	roles.NewRemoveRoleParams().WithRole(role).WithForce(pointer.Bool(false))
+	_, err = srr.reconciliationContext.stardogClient.Roles.RemoveRole(roles.NewRemoveRoleParams().WithRole(role).WithForce(pointer.Bool(false)), auth)
 	if err != nil {
 		return fmt.Errorf("cannot remove Stardog Role %s/%s: %v", namespace, role, err)
 	}

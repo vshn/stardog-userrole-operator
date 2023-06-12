@@ -13,6 +13,29 @@ consumes:
 produces:
 - application/json
 paths:
+  '/databases/{db}':
+    delete:
+      tags:
+        - db
+      summary: Drop database
+      description: Delete the database
+      operationId: dropDatabase
+      parameters:
+        - name: db
+          in: path
+          description: Database name
+          required: true
+          type: string
+      responses:
+        '200':
+          description: A dict containing an array of usernames
+          schema:
+            "$ref": '#/definitions/Generic'
+        '404':
+          description: Database does not exist
+          schema:
+            "$ref": "#/definitions/DBMissing"
+
   "/users":
     get:
       summary: List all users.
@@ -667,3 +690,21 @@ definitions:
         type: array
         items:
           type: string
+  Generic:
+    required:
+      - message
+    properties:
+      message:
+        type: string
+        example: Successfully executed request
+  DBMissing:
+    required:
+      - message
+      - code
+    properties:
+      message:
+        type: string
+        example: Database does not exist
+      code:
+        type: string
+        example: 0D0DU2

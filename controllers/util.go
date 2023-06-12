@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"github.com/vshn/stardog-userrole-operator/stardogrest/models"
 	"os"
 	"reflect"
 	"strings"
@@ -17,7 +18,6 @@ import (
 	. "github.com/vshn/stardog-userrole-operator/api/v1alpha1"
 	stardogv1beta1 "github.com/vshn/stardog-userrole-operator/api/v1beta1"
 	"github.com/vshn/stardog-userrole-operator/pkg/stardogapi"
-	"github.com/vshn/stardog-userrole-operator/stardogrest"
 )
 
 var (
@@ -152,7 +152,7 @@ func contains(list []string, s string) bool {
 	return false
 }
 
-func containsStardogPermission(permissionsTypeB []StardogPermissionSpec, permissionTypeA stardogrest.Permission) bool {
+func containsStardogPermission(permissionsTypeB []StardogPermissionSpec, permissionTypeA models.Permission) bool {
 	for _, permissionTypeB := range permissionsTypeB {
 		if equals(permissionTypeA, permissionTypeB) {
 			return true
@@ -161,16 +161,16 @@ func containsStardogPermission(permissionsTypeB []StardogPermissionSpec, permiss
 	return false
 }
 
-func containsOperatorPermission(permissionsTypeA []stardogrest.Permission, permissionTypeB StardogPermissionSpec) bool {
+func containsOperatorPermission(permissionsTypeA []*models.Permission, permissionTypeB StardogPermissionSpec) bool {
 	for _, permissionTypeA := range permissionsTypeA {
-		if equals(permissionTypeA, permissionTypeB) {
+		if equals(*permissionTypeA, permissionTypeB) {
 			return true
 		}
 	}
 	return false
 }
 
-func equals(permissionTypeA stardogrest.Permission, permissionTypeB StardogPermissionSpec) bool {
+func equals(permissionTypeA models.Permission, permissionTypeB StardogPermissionSpec) bool {
 	var action bool
 	if permissionTypeA.Action == nil {
 		if permissionTypeB.Action != "" {
@@ -198,7 +198,7 @@ func equals(permissionTypeA stardogrest.Permission, permissionTypeB StardogPermi
 		}
 		resources = true
 	} else {
-		resources = reflect.DeepEqual(*permissionTypeA.Resource, permissionTypeB.Resources)
+		resources = reflect.DeepEqual(permissionTypeA.Resource, permissionTypeB.Resources)
 	}
 
 	return action && resourceType && resources

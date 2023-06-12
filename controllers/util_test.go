@@ -5,7 +5,7 @@ import (
 	"errors"
 	"github.com/stretchr/testify/assert"
 	. "github.com/vshn/stardog-userrole-operator/api/v1alpha1"
-	"github.com/vshn/stardog-userrole-operator/stardogrest"
+	"github.com/vshn/stardog-userrole-operator/stardogrest/models"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"os"
@@ -257,16 +257,16 @@ func Test_equals(t *testing.T) {
 
 	tests := []struct {
 		name            string
-		permissionTypeA stardogrest.Permission
+		permissionTypeA models.Permission
 		permissionTypeB StardogPermissionSpec
 		expectValue     bool
 	}{
 		{
 			name: "GivenEqualTypes_ThenReturnTrue",
-			permissionTypeA: stardogrest.Permission{
+			permissionTypeA: models.Permission{
 				Action:       &actionRead,
 				ResourceType: &resourceTypeAll,
-				Resource:     &resourcesX,
+				Resource:     resourcesX,
 			},
 			permissionTypeB: StardogPermissionSpec{
 				Action:       actionRead,
@@ -277,10 +277,10 @@ func Test_equals(t *testing.T) {
 		},
 		{
 			name: "GivenNonEqualTypes1_ThenReturnFalse",
-			permissionTypeA: stardogrest.Permission{
+			permissionTypeA: models.Permission{
 				Action:       &actionRead,
 				ResourceType: &resourceTypeAll,
-				Resource:     &resourcesX,
+				Resource:     resourcesX,
 			},
 			permissionTypeB: StardogPermissionSpec{
 				Action:       actionRead,
@@ -291,10 +291,10 @@ func Test_equals(t *testing.T) {
 		},
 		{
 			name: "GivenNonEqualTypes2_ThenReturnFalse",
-			permissionTypeA: stardogrest.Permission{
+			permissionTypeA: models.Permission{
 				Action:       &actionRead,
 				ResourceType: &resourceTypeAll,
-				Resource:     &resourcesX,
+				Resource:     resourcesX,
 			},
 			permissionTypeB: StardogPermissionSpec{
 				Action:       actionWrite,
@@ -305,9 +305,9 @@ func Test_equals(t *testing.T) {
 		},
 		{
 			name: "GivenMissingAttribute1_ThenReturnFalse",
-			permissionTypeA: stardogrest.Permission{
+			permissionTypeA: models.Permission{
 				ResourceType: &resourceTypeAll,
-				Resource:     &resourcesX,
+				Resource:     resourcesX,
 			},
 			permissionTypeB: StardogPermissionSpec{
 				Action:       actionWrite,
@@ -318,10 +318,10 @@ func Test_equals(t *testing.T) {
 		},
 		{
 			name: "GivenMissingAttribute2_ThenReturnFalse",
-			permissionTypeA: stardogrest.Permission{
+			permissionTypeA: models.Permission{
 				Action:       &actionRead,
 				ResourceType: &resourceTypeAll,
-				Resource:     &resourcesX,
+				Resource:     resourcesX,
 			},
 			permissionTypeB: StardogPermissionSpec{
 				Action:       actionWrite,
@@ -331,7 +331,7 @@ func Test_equals(t *testing.T) {
 		},
 		{
 			name: "GivenMissingAttribute3_ThenReturnFalse",
-			permissionTypeA: stardogrest.Permission{
+			permissionTypeA: models.Permission{
 				Action:       &actionWrite,
 				ResourceType: &resourceTypeAll,
 			},
@@ -363,16 +363,16 @@ func Test_containsStardogPermission(t *testing.T) {
 
 	tests := []struct {
 		name             string
-		permissionTypeA  stardogrest.Permission
+		permissionTypeA  models.Permission
 		permissionTypesB []StardogPermissionSpec
 		expectValue      bool
 	}{
 		{
 			name: "GivenAListOfStardogPermissionSpec_WhenPermissionExists_ThenReturnTrue",
-			permissionTypeA: stardogrest.Permission{
+			permissionTypeA: models.Permission{
 				Action:       &actionRead,
 				ResourceType: &resourceTypeAll,
-				Resource:     &resourcesX,
+				Resource:     resourcesX,
 			},
 			permissionTypesB: []StardogPermissionSpec{
 				{
@@ -405,7 +405,7 @@ func Test_containsStardogPermission(t *testing.T) {
 		},
 		{
 			name:            "GivenAListOfStardogPermissionSpec_WhenPermissionIsEmpty_ThenReturnFalse",
-			permissionTypeA: stardogrest.Permission{},
+			permissionTypeA: models.Permission{},
 			permissionTypesB: []StardogPermissionSpec{
 				{
 					Action:       actionRead,
@@ -458,7 +458,7 @@ func Test_containsOperatorPermission(t *testing.T) {
 	tests := []struct {
 		name             string
 		permissionTypeA  StardogPermissionSpec
-		permissionTypesB []stardogrest.Permission
+		permissionTypesB []*models.Permission
 		expectValue      bool
 	}{
 		{
@@ -468,31 +468,31 @@ func Test_containsOperatorPermission(t *testing.T) {
 				ResourceType: resourceTypeAll,
 				Resources:    resourcesX,
 			},
-			permissionTypesB: []stardogrest.Permission{
+			permissionTypesB: []*models.Permission{
 				{
 					Action:       &actionRead,
 					ResourceType: &resourceTypeGraph,
-					Resource:     &resourcesX,
+					Resource:     resourcesX,
 				},
 				{
 					Action:       &actionAll,
 					ResourceType: &resourceTypeDB,
-					Resource:     &resourcesY,
+					Resource:     resourcesY,
 				},
 				{
 					Action:       &actionRead,
 					ResourceType: &resourceTypeAll,
-					Resource:     &resourcesX,
+					Resource:     resourcesX,
 				},
 				{
 					Action:       &actionAll,
 					ResourceType: &resourceTypeAll,
-					Resource:     &resourcesY,
+					Resource:     resourcesY,
 				},
 				{
 					Action:       &actionWrite,
 					ResourceType: &resourceTypeGraph,
-					Resource:     &resourcesY,
+					Resource:     resourcesY,
 				},
 			},
 			expectValue: true,
@@ -500,31 +500,31 @@ func Test_containsOperatorPermission(t *testing.T) {
 		{
 			name:            "GivenAListOfPermission_WhenStardogPermissionSpecIsEmpty_ThenReturnFalse",
 			permissionTypeA: StardogPermissionSpec{},
-			permissionTypesB: []stardogrest.Permission{
+			permissionTypesB: []*models.Permission{
 				{
 					Action:       &actionRead,
 					ResourceType: &resourceTypeGraph,
-					Resource:     &resourcesX,
+					Resource:     resourcesX,
 				},
 				{
 					Action:       &actionAll,
 					ResourceType: &resourceTypeDB,
-					Resource:     &resourcesY,
+					Resource:     resourcesY,
 				},
 				{
 					Action:       &actionRead,
 					ResourceType: &resourceTypeAll,
-					Resource:     &resourcesX,
+					Resource:     resourcesX,
 				},
 				{
 					Action:       &actionAll,
 					ResourceType: &resourceTypeAll,
-					Resource:     &resourcesY,
+					Resource:     resourcesY,
 				},
 				{
 					Action:       &actionWrite,
 					ResourceType: &resourceTypeGraph,
-					Resource:     &resourcesY,
+					Resource:     resourcesY,
 				},
 			},
 			expectValue: false,
