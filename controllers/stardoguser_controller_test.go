@@ -243,7 +243,7 @@ func Test_syncUser(t *testing.T) {
 					stardogMocked.
 						EXPECT().
 						ListUsers(gomock.Any(), gomock.Any()).
-						Return(&users.ListUsersOK{&models.Users{Users: []string{}}}, nil).
+						Return(&users.ListUsersOK{Payload: &models.Users{Users: []string{}}}, nil).
 						Times(1)
 				},
 				func(stardog_client.Stardog) {
@@ -256,19 +256,19 @@ func Test_syncUser(t *testing.T) {
 					stardogMocked.
 						EXPECT().
 						ListUserRoles(users_roles.NewListUserRolesParams().WithUser(encodedUser), gomock.Any()).
-						Return(&users_roles.ListUserRolesOK{&models.Roles{Roles: []string{}}}, nil).
+						Return(&users_roles.ListUserRolesOK{Payload: &models.Roles{Roles: []string{}}}, nil).
 						Times(1)
 				},
 				func(stardog_client.Stardog) {
 					stardogMocked.
 						EXPECT().
-						AddRole(users_roles.NewAddRoleParams().WithUser(encodedUser).WithRole(&models.Rolename{&role1}), gomock.Any()).
+						AddRole(users_roles.NewAddRoleParams().WithUser(encodedUser).WithRole(&models.Rolename{Rolename: &role1}), gomock.Any()).
 						Times(1)
 				},
 				func(stardog_client.Stardog) {
 					stardogMocked.
 						EXPECT().
-						AddRole(users_roles.NewAddRoleParams().WithUser(encodedUser).WithRole(&models.Rolename{&role2}), gomock.Any()).
+						AddRole(users_roles.NewAddRoleParams().WithUser(encodedUser).WithRole(&models.Rolename{Rolename: &role2}), gomock.Any()).
 						Times(1)
 				},
 			},
@@ -294,7 +294,7 @@ func Test_syncUser(t *testing.T) {
 					stardogMocked.
 						EXPECT().
 						ListUsers(gomock.Any(), gomock.Any()).
-						Return(&users.ListUsersOK{&models.Users{Users: []string{"random-user"}}}, nil).
+						Return(&users.ListUsersOK{Payload: &models.Users{Users: []string{"random-user"}}}, nil).
 						Times(1)
 				},
 				func(stardog_client.Stardog) {
@@ -307,19 +307,19 @@ func Test_syncUser(t *testing.T) {
 					stardogMocked.
 						EXPECT().
 						ListUserRoles(gomock.Any(), gomock.Any()).
-						Return(&users_roles.ListUserRolesOK{&models.Roles{Roles: []string{}}}, nil).
+						Return(&users_roles.ListUserRolesOK{Payload: &models.Roles{Roles: []string{}}}, nil).
 						Times(1)
 				},
 				func(stardog_client.Stardog) {
 					stardogMocked.
 						EXPECT().
-						AddRole(users_roles.NewAddRoleParams().WithUser(encodedUser).WithRole(&models.Rolename{&role1}), gomock.Any()).
+						AddRole(users_roles.NewAddRoleParams().WithUser(encodedUser).WithRole(&models.Rolename{Rolename: &role1}), gomock.Any()).
 						Times(1)
 				},
 				func(stardog_client.Stardog) {
 					stardogMocked.
 						EXPECT().
-						AddRole(users_roles.NewAddRoleParams().WithUser(encodedUser).WithRole(&models.Rolename{&role2}), gomock.Any()).
+						AddRole(users_roles.NewAddRoleParams().WithUser(encodedUser).WithRole(&models.Rolename{Rolename: &role2}), gomock.Any()).
 						Times(1)
 				},
 			},
@@ -345,7 +345,7 @@ func Test_syncUser(t *testing.T) {
 					stardogMocked.
 						EXPECT().
 						ListUsers(gomock.Any(), gomock.Any()).
-						Return(&users.ListUsersOK{&models.Users{Users: []string{encodedUser}}}, nil).
+						Return(&users.ListUsersOK{Payload: &models.Users{Users: []string{encodedUser}}}, nil).
 						Times(1)
 				},
 				func(stardog_client.Stardog) {
@@ -354,7 +354,7 @@ func Test_syncUser(t *testing.T) {
 						ChangePassword(
 							users.NewChangePasswordParams().
 								WithUser(encodedUser).
-								WithPassword(&models.Password{&encodedPwd}),
+								WithPassword(&models.Password{Password: &encodedPwd}),
 							gomock.Any()).
 						Times(1)
 				},
@@ -362,13 +362,13 @@ func Test_syncUser(t *testing.T) {
 					stardogMocked.
 						EXPECT().
 						ListUserRoles(users_roles.NewListUserRolesParams().WithUser(encodedUser), gomock.Any()).
-						Return(&users_roles.ListUserRolesOK{&models.Roles{Roles: roles1}}, nil).
+						Return(&users_roles.ListUserRolesOK{Payload: &models.Roles{Roles: roles1}}, nil).
 						Times(1)
 				},
 				func(stardog_client.Stardog) {
 					stardogMocked.
 						EXPECT().
-						AddRole(users_roles.NewAddRoleParams().WithUser(encodedUser).WithRole(&models.Rolename{&role3}), gomock.Any()).
+						AddRole(users_roles.NewAddRoleParams().WithUser(encodedUser).WithRole(&models.Rolename{Rolename: &role3}), gomock.Any()).
 						Times(1)
 				},
 				func(stardog_client.Stardog) {
@@ -631,7 +631,7 @@ func Test_ReconcileStardogUser(t *testing.T) {
 				func(stardog_client.Stardog) {
 					stardogMocked.EXPECT().
 						ListUsers(gomock.Any(), gomock.Any()).
-						Return(&users.ListUsersOK{&models.Users{Users: []string{}}}, nil)
+						Return(&users.ListUsersOK{Payload: &models.Users{Users: []string{}}}, nil)
 				},
 				func(stardog_client.Stardog) {
 					stardogMocked.EXPECT().
@@ -640,7 +640,7 @@ func Test_ReconcileStardogUser(t *testing.T) {
 				func(stardog_client.Stardog) {
 					stardogMocked.EXPECT().
 						ListUserRoles(gomock.Any(), gomock.Any()).
-						Return(&users_roles.ListUserRolesOK{&models.Roles{Roles: []string{}}}, nil)
+						Return(&users_roles.ListUserRolesOK{Payload: &models.Roles{Roles: []string{}}}, nil)
 				},
 			},
 			expectedResult: ctrl.Result{
@@ -668,7 +668,7 @@ func Test_ReconcileStardogUser(t *testing.T) {
 				func(stardog_client.Stardog) {
 					stardogMocked.EXPECT().
 						ListUsers(gomock.Any(), gomock.Any()).
-						Return(&users.ListUsersOK{&models.Users{Users: []string{}}}, nil)
+						Return(&users.ListUsersOK{Payload: &models.Users{Users: []string{}}}, nil)
 				},
 				func(stardog_client.Stardog) {
 					stardogMocked.EXPECT().
@@ -677,7 +677,7 @@ func Test_ReconcileStardogUser(t *testing.T) {
 				func(stardog_client.Stardog) {
 					stardogMocked.EXPECT().
 						ListUserRoles(gomock.Any(), gomock.Any()).
-						Return(&users_roles.ListUserRolesOK{&models.Roles{Roles: []string{}}}, nil)
+						Return(&users_roles.ListUserRolesOK{Payload: &models.Roles{Roles: []string{}}}, nil)
 				},
 			},
 			expectedResult: ctrl.Result{

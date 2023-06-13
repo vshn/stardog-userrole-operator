@@ -406,7 +406,7 @@ func Test_validateConnection(t *testing.T) {
 
 			stardogMocked.EXPECT().
 				IsEnabled(gomock.Any(), gomock.Any()).
-				Return(&users.IsEnabledOK{Payload: &models.Enabled{pointer.Bool(false)}}, tt.err).
+				Return(&users.IsEnabledOK{Payload: &models.Enabled{Enabled: pointer.Bool(false)}}, tt.err).
 				Times(1)
 
 			err = r.validateConnection(&tt.sir)

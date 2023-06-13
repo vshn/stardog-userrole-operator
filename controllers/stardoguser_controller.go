@@ -220,7 +220,7 @@ func (r *StardogUserReconciler) syncUser(sur *StardogUserReconciliation) error {
 	existingRoles := rolesObject.Payload.Roles
 	for _, role := range roles {
 		if !contains(existingRoles, role) {
-			params := users_roles.NewAddRoleParams().WithUser(*user.Username).WithRole(&models.Rolename{&role})
+			params := users_roles.NewAddRoleParams().WithUser(*user.Username).WithRole(&models.Rolename{Rolename: &role})
 			_, err := stardogClient.UsersRoles.AddRole(params, auth)
 			if err != nil {
 				roleErrors = append(roleErrors, err)
