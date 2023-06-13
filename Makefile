@@ -44,6 +44,8 @@ manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and Cust
 
 .PHONY: generate
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
+	$(MOCKGEN) -source stardogrest/client/stardog_client_test.go -destination stardogrest/mocks/mock_client.go -package stardogmock
+	$(SWAGGER) generate client -f stardogrest/stardog_swagger.yaml -A stardog --target=stardogrest
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
 .PHONY: fmt
@@ -109,6 +111,7 @@ $(LOCALBIN):
 ## Tool Binaries
 KUSTOMIZE ?= $(LOCALBIN)/kustomize
 CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
+SWAGGER ?= docker run --rm -it  --user $$(id -u):$$(id -g) -v $$HOME:$$HOME -w $$PWD ghcr.io/go-swagger/go-swagger
 ENVTEST ?= $(LOCALBIN)/setup-envtest
 
 ## Tool Versions
