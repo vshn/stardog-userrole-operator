@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	stardog "github.com/vshn/stardog-userrole-operator/stardogrest/client"
 	"github.com/vshn/stardog-userrole-operator/stardogrest/client/roles"
 	"github.com/vshn/stardog-userrole-operator/stardogrest/client/roles_permissions"
 	"github.com/vshn/stardog-userrole-operator/stardogrest/client/users_roles"
@@ -54,9 +55,10 @@ func (r *StardogRoleReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 	srr := &StardogRoleReconciliation{
 		reconciliationContext: &ReconciliationContext{
-			context:    ctx,
-			conditions: make(map[StardogConditionType]StardogCondition),
-			namespace:  namespace.Namespace,
+			context:       ctx,
+			conditions:    make(map[StardogConditionType]StardogCondition),
+			namespace:     namespace.Namespace,
+			stardogClient: stardog.NewHTTPClient(nil),
 		},
 		resource: stardogRole,
 	}
@@ -268,7 +270,6 @@ func (r *StardogRoleReconciler) finalize(srr *StardogRoleReconciliation) error {
 		return fmt.Errorf("cannot delete role %s as it is used by %s users in %s", role, strings.Join(rolesObject.Payload.Users, ","), namespace)
 	}
 
-	roles.NewRemoveRoleParams().WithRole(role).WithForce(pointer.Bool(false))
 	_, err = srr.reconciliationContext.stardogClient.Roles.RemoveRole(roles.NewRemoveRoleParams().WithRole(role).WithForce(pointer.Bool(false)), auth)
 	if err != nil {
 		return fmt.Errorf("cannot remove Stardog Role %s/%s: %v", namespace, role, err)

@@ -79,6 +79,11 @@ func (o *SetEnabledOK) IsCode(code int) bool {
 	return code == 200
 }
 
+// Code gets the status code for the set enabled o k response
+func (o *SetEnabledOK) Code() int {
+	return 200
+}
+
 func (o *SetEnabledOK) Error() string {
 	return fmt.Sprintf("[PUT /users/{user}/enabled][%d] setEnabledOK ", 200)
 }
@@ -110,11 +115,6 @@ type SetEnabledDefault struct {
 	Payload *models.Error
 }
 
-// Code gets the status code for the set enabled default response
-func (o *SetEnabledDefault) Code() int {
-	return o._statusCode
-}
-
 // IsSuccess returns true when this set enabled default response has a 2xx status code
 func (o *SetEnabledDefault) IsSuccess() bool {
 	return o._statusCode/100 == 2
@@ -138,6 +138,11 @@ func (o *SetEnabledDefault) IsServerError() bool {
 // IsCode returns true when this set enabled default response a status code equal to that given
 func (o *SetEnabledDefault) IsCode(code int) bool {
 	return o._statusCode == code
+}
+
+// Code gets the status code for the set enabled default response
+func (o *SetEnabledDefault) Code() int {
+	return o._statusCode
 }
 
 func (o *SetEnabledDefault) Error() string {

@@ -10,7 +10,7 @@ import (
 	"github.com/vshn/stardog-userrole-operator/stardogrest/client/users_roles"
 )
 
-//go:generate mockgen -source . -destination ../mocks/mock_client.go
+//go:generate mockgen -source stardog_client_test.go -destination ../mocks/mock_client.go -package stardogmock
 type StardogTestClient interface {
 	db.ClientService
 	roles.ClientService

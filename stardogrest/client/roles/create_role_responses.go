@@ -79,6 +79,11 @@ func (o *CreateRoleCreated) IsCode(code int) bool {
 	return code == 201
 }
 
+// Code gets the status code for the create role created response
+func (o *CreateRoleCreated) Code() int {
+	return 201
+}
+
 func (o *CreateRoleCreated) Error() string {
 	return fmt.Sprintf("[POST /roles][%d] createRoleCreated ", 201)
 }
@@ -110,11 +115,6 @@ type CreateRoleDefault struct {
 	Payload *models.Error
 }
 
-// Code gets the status code for the create role default response
-func (o *CreateRoleDefault) Code() int {
-	return o._statusCode
-}
-
 // IsSuccess returns true when this create role default response has a 2xx status code
 func (o *CreateRoleDefault) IsSuccess() bool {
 	return o._statusCode/100 == 2
@@ -138,6 +138,11 @@ func (o *CreateRoleDefault) IsServerError() bool {
 // IsCode returns true when this create role default response a status code equal to that given
 func (o *CreateRoleDefault) IsCode(code int) bool {
 	return o._statusCode == code
+}
+
+// Code gets the status code for the create role default response
+func (o *CreateRoleDefault) Code() int {
+	return o._statusCode
 }
 
 func (o *CreateRoleDefault) Error() string {

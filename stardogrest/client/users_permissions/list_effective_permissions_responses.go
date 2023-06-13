@@ -80,6 +80,11 @@ func (o *ListEffectivePermissionsOK) IsCode(code int) bool {
 	return code == 200
 }
 
+// Code gets the status code for the list effective permissions o k response
+func (o *ListEffectivePermissionsOK) Code() int {
+	return 200
+}
+
 func (o *ListEffectivePermissionsOK) Error() string {
 	return fmt.Sprintf("[GET /permissions/effective/user/{user}][%d] listEffectivePermissionsOK  %+v", 200, o.Payload)
 }
@@ -122,11 +127,6 @@ type ListEffectivePermissionsDefault struct {
 	Payload *models.Error
 }
 
-// Code gets the status code for the list effective permissions default response
-func (o *ListEffectivePermissionsDefault) Code() int {
-	return o._statusCode
-}
-
 // IsSuccess returns true when this list effective permissions default response has a 2xx status code
 func (o *ListEffectivePermissionsDefault) IsSuccess() bool {
 	return o._statusCode/100 == 2
@@ -150,6 +150,11 @@ func (o *ListEffectivePermissionsDefault) IsServerError() bool {
 // IsCode returns true when this list effective permissions default response a status code equal to that given
 func (o *ListEffectivePermissionsDefault) IsCode(code int) bool {
 	return o._statusCode == code
+}
+
+// Code gets the status code for the list effective permissions default response
+func (o *ListEffectivePermissionsDefault) Code() int {
+	return o._statusCode
 }
 
 func (o *ListEffectivePermissionsDefault) Error() string {

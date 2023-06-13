@@ -79,6 +79,11 @@ func (o *PutRolesOK) IsCode(code int) bool {
 	return code == 200
 }
 
+// Code gets the status code for the put roles o k response
+func (o *PutRolesOK) Code() int {
+	return 200
+}
+
 func (o *PutRolesOK) Error() string {
 	return fmt.Sprintf("[PUT /users/{user}/roles][%d] putRolesOK ", 200)
 }
@@ -110,11 +115,6 @@ type PutRolesDefault struct {
 	Payload *models.Error
 }
 
-// Code gets the status code for the put roles default response
-func (o *PutRolesDefault) Code() int {
-	return o._statusCode
-}
-
 // IsSuccess returns true when this put roles default response has a 2xx status code
 func (o *PutRolesDefault) IsSuccess() bool {
 	return o._statusCode/100 == 2
@@ -138,6 +138,11 @@ func (o *PutRolesDefault) IsServerError() bool {
 // IsCode returns true when this put roles default response a status code equal to that given
 func (o *PutRolesDefault) IsCode(code int) bool {
 	return o._statusCode == code
+}
+
+// Code gets the status code for the put roles default response
+func (o *PutRolesDefault) Code() int {
+	return o._statusCode
 }
 
 func (o *PutRolesDefault) Error() string {

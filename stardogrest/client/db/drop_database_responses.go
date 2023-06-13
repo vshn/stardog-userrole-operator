@@ -36,7 +36,7 @@ func (o *DropDatabaseReader) ReadResponse(response runtime.ClientResponse, consu
 		}
 		return nil, result
 	default:
-		return nil, runtime.NewAPIError("response status code does not match any response statuses defined for this endpoint in the swagger spec", response, response.Code())
+		return nil, runtime.NewAPIError("[DELETE /databases/{db}] dropDatabase", response, response.Code())
 	}
 }
 
@@ -77,6 +77,11 @@ func (o *DropDatabaseOK) IsServerError() bool {
 // IsCode returns true when this drop database o k response a status code equal to that given
 func (o *DropDatabaseOK) IsCode(code int) bool {
 	return code == 200
+}
+
+// Code gets the status code for the drop database o k response
+func (o *DropDatabaseOK) Code() int {
+	return 200
 }
 
 func (o *DropDatabaseOK) Error() string {
@@ -140,6 +145,11 @@ func (o *DropDatabaseNotFound) IsServerError() bool {
 // IsCode returns true when this drop database not found response a status code equal to that given
 func (o *DropDatabaseNotFound) IsCode(code int) bool {
 	return code == 404
+}
+
+// Code gets the status code for the drop database not found response
+func (o *DropDatabaseNotFound) Code() int {
+	return 404
 }
 
 func (o *DropDatabaseNotFound) Error() string {

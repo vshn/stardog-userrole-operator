@@ -80,6 +80,11 @@ func (o *ListUserRolesOK) IsCode(code int) bool {
 	return code == 200
 }
 
+// Code gets the status code for the list user roles o k response
+func (o *ListUserRolesOK) Code() int {
+	return 200
+}
+
 func (o *ListUserRolesOK) Error() string {
 	return fmt.Sprintf("[GET /users/{user}/roles][%d] listUserRolesOK  %+v", 200, o.Payload)
 }
@@ -122,11 +127,6 @@ type ListUserRolesDefault struct {
 	Payload *models.Error
 }
 
-// Code gets the status code for the list user roles default response
-func (o *ListUserRolesDefault) Code() int {
-	return o._statusCode
-}
-
 // IsSuccess returns true when this list user roles default response has a 2xx status code
 func (o *ListUserRolesDefault) IsSuccess() bool {
 	return o._statusCode/100 == 2
@@ -150,6 +150,11 @@ func (o *ListUserRolesDefault) IsServerError() bool {
 // IsCode returns true when this list user roles default response a status code equal to that given
 func (o *ListUserRolesDefault) IsCode(code int) bool {
 	return o._statusCode == code
+}
+
+// Code gets the status code for the list user roles default response
+func (o *ListUserRolesDefault) Code() int {
+	return o._statusCode
 }
 
 func (o *ListUserRolesDefault) Error() string {

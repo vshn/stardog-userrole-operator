@@ -1,5 +1,3 @@
-//go:build exclude
-
 package controllers
 
 import (
@@ -7,13 +5,13 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	stardogmock "github.com/vshn/stardog-userrole-operator/stardogrest/mocks"
 	"testing"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/vshn/stardog-userrole-operator/api/v1alpha1"
 	stardogv1alpha1 "github.com/vshn/stardog-userrole-operator/api/v1alpha1"
-	stardogrestapi "github.com/vshn/stardog-userrole-operator/stardogrest/mocks"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -26,13 +24,14 @@ func Test_initStardogClientFromRef(t *testing.T) {
 	namespace := "namespace-test"
 	stardogInstanceName := "instance-test"
 	secretName := "secret-test"
-	serverURL := "url"
+	serverURL := "http://url:8080"
 	username := "admin"
 	password := "1234"
 
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
-	stardogClient := stardogrestapi.NewMockExtendedBaseClientAPI(mockCtrl)
+	stardogMocked := stardogmock.NewMockStardogTestClient(mockCtrl)
+	stardogClient := createStardogClientFromMock(stardogMocked)
 
 	tests := []struct {
 		name            string
@@ -69,17 +68,14 @@ func Test_initStardogClientFromRef(t *testing.T) {
 				namespace:     namespace,
 				stardogClient: stardogClient,
 			}
+			stardogMocked.EXPECT().
+				SetTransport(gomock.Any()).
+				AnyTimes()
 
 			base64.StdEncoding.EncodeToString([]byte(username))
-			if tt.err == nil {
-				stardogClient.EXPECT().SetConnection(
-					serverURL,
-					base64.StdEncoding.EncodeToString([]byte(username)),
-					base64.StdEncoding.EncodeToString([]byte(password)),
-				)
-			}
 
-			err = rc.initStardogClientFromRef(fakeKubeClient, stardogInstanceName)
+			_, err = rc.initStardogClientFromRef(fakeKubeClient, stardogInstanceName)
+
 			assert.Equal(t, tt.err, err)
 		})
 	}
@@ -188,6 +184,8 @@ func createKubeFakeClient(initObjs ...runtime.Object) (client.Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	kubeClient := fake.NewFakeClientWithScheme(scheme.Scheme, initObjs...)
-	return kubeClient, nil
+	return fake.NewClientBuilder().
+		WithScheme(scheme.Scheme).
+		WithRuntimeObjects(initObjs...).
+		Build(), nil
 }

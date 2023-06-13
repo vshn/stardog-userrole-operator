@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	stardog "github.com/vshn/stardog-userrole-operator/stardogrest/client"
 	model_users "github.com/vshn/stardog-userrole-operator/stardogrest/client/users"
 	"github.com/vshn/stardog-userrole-operator/stardogrest/client/users_roles"
 	"github.com/vshn/stardog-userrole-operator/stardogrest/models"
@@ -51,9 +52,10 @@ func (r *StardogUserReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 	sur := &StardogUserReconciliation{
 		reconciliationContext: &ReconciliationContext{
-			context:    ctx,
-			conditions: make(map[StardogConditionType]StardogCondition),
-			namespace:  namespace.Namespace,
+			context:       ctx,
+			conditions:    make(map[StardogConditionType]StardogCondition),
+			namespace:     namespace.Namespace,
+			stardogClient: stardog.NewHTTPClient(nil),
 		},
 		resource: stardogUser,
 	}
@@ -218,7 +220,7 @@ func (r *StardogUserReconciler) syncUser(sur *StardogUserReconciliation) error {
 	existingRoles := rolesObject.Payload.Roles
 	for _, role := range roles {
 		if !contains(existingRoles, role) {
-			params := users_roles.NewAddRoleParams().WithUser(*user.Username).WithRole(&models.Rolename{Rolename: &role})
+			params := users_roles.NewAddRoleParams().WithUser(*user.Username).WithRole(&models.Rolename{&role})
 			_, err := stardogClient.UsersRoles.AddRole(params, auth)
 			if err != nil {
 				roleErrors = append(roleErrors, err)

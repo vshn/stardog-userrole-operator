@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	stardog "github.com/vshn/stardog-userrole-operator/stardogrest/client"
 	"github.com/vshn/stardog-userrole-operator/stardogrest/client/users"
 	"net/url"
 	"time"
@@ -50,9 +51,10 @@ func (r *StardogInstanceReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 
 	sir := &StardogInstanceReconciliation{
 		reconciliationContext: &ReconciliationContext{
-			context:    ctx,
-			conditions: make(map[StardogConditionType]StardogCondition),
-			namespace:  namespace.Namespace,
+			context:       ctx,
+			conditions:    make(map[StardogConditionType]StardogCondition),
+			namespace:     namespace.Namespace,
+			stardogClient: stardog.NewHTTPClient(nil),
 		},
 		resource: stardogInstance,
 	}

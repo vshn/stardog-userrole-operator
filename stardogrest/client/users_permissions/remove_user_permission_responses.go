@@ -79,6 +79,11 @@ func (o *RemoveUserPermissionCreated) IsCode(code int) bool {
 	return code == 201
 }
 
+// Code gets the status code for the remove user permission created response
+func (o *RemoveUserPermissionCreated) Code() int {
+	return 201
+}
+
 func (o *RemoveUserPermissionCreated) Error() string {
 	return fmt.Sprintf("[POST /permissions/user/{user}/delete][%d] removeUserPermissionCreated ", 201)
 }
@@ -110,11 +115,6 @@ type RemoveUserPermissionDefault struct {
 	Payload *models.Error
 }
 
-// Code gets the status code for the remove user permission default response
-func (o *RemoveUserPermissionDefault) Code() int {
-	return o._statusCode
-}
-
 // IsSuccess returns true when this remove user permission default response has a 2xx status code
 func (o *RemoveUserPermissionDefault) IsSuccess() bool {
 	return o._statusCode/100 == 2
@@ -138,6 +138,11 @@ func (o *RemoveUserPermissionDefault) IsServerError() bool {
 // IsCode returns true when this remove user permission default response a status code equal to that given
 func (o *RemoveUserPermissionDefault) IsCode(code int) bool {
 	return o._statusCode == code
+}
+
+// Code gets the status code for the remove user permission default response
+func (o *RemoveUserPermissionDefault) Code() int {
+	return o._statusCode
 }
 
 func (o *RemoveUserPermissionDefault) Error() string {

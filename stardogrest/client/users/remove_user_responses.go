@@ -79,6 +79,11 @@ func (o *RemoveUserNoContent) IsCode(code int) bool {
 	return code == 204
 }
 
+// Code gets the status code for the remove user no content response
+func (o *RemoveUserNoContent) Code() int {
+	return 204
+}
+
 func (o *RemoveUserNoContent) Error() string {
 	return fmt.Sprintf("[DELETE /users/{user}][%d] removeUserNoContent ", 204)
 }
@@ -110,11 +115,6 @@ type RemoveUserDefault struct {
 	Payload *models.Error
 }
 
-// Code gets the status code for the remove user default response
-func (o *RemoveUserDefault) Code() int {
-	return o._statusCode
-}
-
 // IsSuccess returns true when this remove user default response has a 2xx status code
 func (o *RemoveUserDefault) IsSuccess() bool {
 	return o._statusCode/100 == 2
@@ -138,6 +138,11 @@ func (o *RemoveUserDefault) IsServerError() bool {
 // IsCode returns true when this remove user default response a status code equal to that given
 func (o *RemoveUserDefault) IsCode(code int) bool {
 	return o._statusCode == code
+}
+
+// Code gets the status code for the remove user default response
+func (o *RemoveUserDefault) Code() int {
+	return o._statusCode
 }
 
 func (o *RemoveUserDefault) Error() string {

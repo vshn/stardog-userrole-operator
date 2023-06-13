@@ -79,6 +79,11 @@ func (o *ChangePasswordOK) IsCode(code int) bool {
 	return code == 200
 }
 
+// Code gets the status code for the change password o k response
+func (o *ChangePasswordOK) Code() int {
+	return 200
+}
+
 func (o *ChangePasswordOK) Error() string {
 	return fmt.Sprintf("[PUT /users/{user}/pwd][%d] changePasswordOK ", 200)
 }
@@ -110,11 +115,6 @@ type ChangePasswordDefault struct {
 	Payload *models.Error
 }
 
-// Code gets the status code for the change password default response
-func (o *ChangePasswordDefault) Code() int {
-	return o._statusCode
-}
-
 // IsSuccess returns true when this change password default response has a 2xx status code
 func (o *ChangePasswordDefault) IsSuccess() bool {
 	return o._statusCode/100 == 2
@@ -138,6 +138,11 @@ func (o *ChangePasswordDefault) IsServerError() bool {
 // IsCode returns true when this change password default response a status code equal to that given
 func (o *ChangePasswordDefault) IsCode(code int) bool {
 	return o._statusCode == code
+}
+
+// Code gets the status code for the change password default response
+func (o *ChangePasswordDefault) Code() int {
+	return o._statusCode
 }
 
 func (o *ChangePasswordDefault) Error() string {

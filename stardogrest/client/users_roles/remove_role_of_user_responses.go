@@ -79,6 +79,11 @@ func (o *RemoveRoleOfUserNoContent) IsCode(code int) bool {
 	return code == 204
 }
 
+// Code gets the status code for the remove role of user no content response
+func (o *RemoveRoleOfUserNoContent) Code() int {
+	return 204
+}
+
 func (o *RemoveRoleOfUserNoContent) Error() string {
 	return fmt.Sprintf("[DELETE /users/{user}/roles/{role}][%d] removeRoleOfUserNoContent ", 204)
 }
@@ -110,11 +115,6 @@ type RemoveRoleOfUserDefault struct {
 	Payload *models.Error
 }
 
-// Code gets the status code for the remove role of user default response
-func (o *RemoveRoleOfUserDefault) Code() int {
-	return o._statusCode
-}
-
 // IsSuccess returns true when this remove role of user default response has a 2xx status code
 func (o *RemoveRoleOfUserDefault) IsSuccess() bool {
 	return o._statusCode/100 == 2
@@ -138,6 +138,11 @@ func (o *RemoveRoleOfUserDefault) IsServerError() bool {
 // IsCode returns true when this remove role of user default response a status code equal to that given
 func (o *RemoveRoleOfUserDefault) IsCode(code int) bool {
 	return o._statusCode == code
+}
+
+// Code gets the status code for the remove role of user default response
+func (o *RemoveRoleOfUserDefault) Code() int {
+	return o._statusCode
 }
 
 func (o *RemoveRoleOfUserDefault) Error() string {

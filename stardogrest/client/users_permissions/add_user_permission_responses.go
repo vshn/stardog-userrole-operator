@@ -79,6 +79,11 @@ func (o *AddUserPermissionCreated) IsCode(code int) bool {
 	return code == 201
 }
 
+// Code gets the status code for the add user permission created response
+func (o *AddUserPermissionCreated) Code() int {
+	return 201
+}
+
 func (o *AddUserPermissionCreated) Error() string {
 	return fmt.Sprintf("[PUT /permissions/user/{user}][%d] addUserPermissionCreated ", 201)
 }
@@ -110,11 +115,6 @@ type AddUserPermissionDefault struct {
 	Payload *models.Error
 }
 
-// Code gets the status code for the add user permission default response
-func (o *AddUserPermissionDefault) Code() int {
-	return o._statusCode
-}
-
 // IsSuccess returns true when this add user permission default response has a 2xx status code
 func (o *AddUserPermissionDefault) IsSuccess() bool {
 	return o._statusCode/100 == 2
@@ -138,6 +138,11 @@ func (o *AddUserPermissionDefault) IsServerError() bool {
 // IsCode returns true when this add user permission default response a status code equal to that given
 func (o *AddUserPermissionDefault) IsCode(code int) bool {
 	return o._statusCode == code
+}
+
+// Code gets the status code for the add user permission default response
+func (o *AddUserPermissionDefault) Code() int {
+	return o._statusCode
 }
 
 func (o *AddUserPermissionDefault) Error() string {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/go-openapi/runtime"
 	auth "github.com/go-openapi/runtime/client"
+	httptransport "github.com/go-openapi/runtime/client"
 	stardog "github.com/vshn/stardog-userrole-operator/stardogrest/client"
 	"net/url"
 
@@ -17,7 +18,7 @@ import (
 type ReconciliationContext struct {
 	context       context.Context
 	conditions    map[StardogConditionType]StardogCondition
-	stardogClient stardog.StardogClient
+	stardogClient *stardog.Stardog
 	namespace     string
 }
 
@@ -59,12 +60,11 @@ func (rc *ReconciliationContext) initStardogClient(kubeClient client.Client, sta
 	}
 
 	u, err := url.Parse(serverUrl)
-	if err != nil {
+	if err != nil || u.Host == "" {
 		return nil, fmt.Errorf("invalid url from stardoginstance %s: %s", stardogInstance.Name, serverUrl)
 	}
 
-	rc.stardogClient = *stardog.NewHTTPClientWithConfig(nil, stardog.DefaultTransportConfig().WithHost(u.Host))
-
+	rc.stardogClient.SetTransport(httptransport.New(u.Host, stardog.DefaultBasePath, stardog.DefaultSchemes))
 	return auth.BasicAuth(adminUsername, adminPassword), nil
 }
 

@@ -79,6 +79,11 @@ func (o *ValidateUserOK) IsCode(code int) bool {
 	return code == 200
 }
 
+// Code gets the status code for the validate user o k response
+func (o *ValidateUserOK) Code() int {
+	return 200
+}
+
 func (o *ValidateUserOK) Error() string {
 	return fmt.Sprintf("[GET /users/valid][%d] validateUserOK ", 200)
 }
@@ -110,11 +115,6 @@ type ValidateUserDefault struct {
 	Payload *models.Error
 }
 
-// Code gets the status code for the validate user default response
-func (o *ValidateUserDefault) Code() int {
-	return o._statusCode
-}
-
 // IsSuccess returns true when this validate user default response has a 2xx status code
 func (o *ValidateUserDefault) IsSuccess() bool {
 	return o._statusCode/100 == 2
@@ -138,6 +138,11 @@ func (o *ValidateUserDefault) IsServerError() bool {
 // IsCode returns true when this validate user default response a status code equal to that given
 func (o *ValidateUserDefault) IsCode(code int) bool {
 	return o._statusCode == code
+}
+
+// Code gets the status code for the validate user default response
+func (o *ValidateUserDefault) Code() int {
+	return o._statusCode
 }
 
 func (o *ValidateUserDefault) Error() string {

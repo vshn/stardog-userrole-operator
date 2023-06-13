@@ -79,6 +79,11 @@ func (o *AddRoleNoContent) IsCode(code int) bool {
 	return code == 204
 }
 
+// Code gets the status code for the add role no content response
+func (o *AddRoleNoContent) Code() int {
+	return 204
+}
+
 func (o *AddRoleNoContent) Error() string {
 	return fmt.Sprintf("[POST /users/{user}/roles][%d] addRoleNoContent ", 204)
 }
@@ -110,11 +115,6 @@ type AddRoleDefault struct {
 	Payload *models.Error
 }
 
-// Code gets the status code for the add role default response
-func (o *AddRoleDefault) Code() int {
-	return o._statusCode
-}
-
 // IsSuccess returns true when this add role default response has a 2xx status code
 func (o *AddRoleDefault) IsSuccess() bool {
 	return o._statusCode/100 == 2
@@ -138,6 +138,11 @@ func (o *AddRoleDefault) IsServerError() bool {
 // IsCode returns true when this add role default response a status code equal to that given
 func (o *AddRoleDefault) IsCode(code int) bool {
 	return o._statusCode == code
+}
+
+// Code gets the status code for the add role default response
+func (o *AddRoleDefault) Code() int {
+	return o._statusCode
 }
 
 func (o *AddRoleDefault) Error() string {
