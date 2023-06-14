@@ -139,9 +139,8 @@ func (r *StardogRoleReconciler) syncRole(srr *StardogRoleReconciliation) error {
 	var existingPermissions []*models.Permission
 	if contains(allRoles.Payload.Roles, roleName) {
 		r.Log.V(1).Info("adding permissions to role", "role", roleName)
-		roles_permissions.NewListRolePermissionsParams().WithRole(roleName)
-		roles.NewCreateRoleParams().WithRole(&models.Rolename{Rolename: &roleName})
-		permissionsObject, err := stardogClient.RolesPermissions.ListRolePermissions(roles_permissions.NewListRolePermissionsParams().WithRole(roleName), auth)
+		params := roles_permissions.NewListRolePermissionsParams().WithRole(roleName)
+		permissionsObject, err := stardogClient.RolesPermissions.ListRolePermissions(params, auth)
 		if err != nil {
 			return fmt.Errorf("cannot list permissions for role %s in %s: %v", roleName, namespace, err)
 		}

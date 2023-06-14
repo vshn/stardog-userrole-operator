@@ -14,21 +14,21 @@ import (
 	"github.com/go-openapi/validate"
 )
 
-// Superuser superuser
+// Databases databases
 //
-// swagger:model Superuser
-type Superuser struct {
+// swagger:model Databases
+type Databases struct {
 
-	// superuser
+	// databases
 	// Required: true
-	Superuser bool `json:"superuser"`
+	Databases []string `json:"databases"`
 }
 
-// Validate validates this superuser
-func (m *Superuser) Validate(formats strfmt.Registry) error {
+// Validate validates this databases
+func (m *Databases) Validate(formats strfmt.Registry) error {
 	var res []error
 
-	if err := m.validateSuperuser(formats); err != nil {
+	if err := m.validateDatabases(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -38,22 +38,22 @@ func (m *Superuser) Validate(formats strfmt.Registry) error {
 	return nil
 }
 
-func (m *Superuser) validateSuperuser(formats strfmt.Registry) error {
+func (m *Databases) validateDatabases(formats strfmt.Registry) error {
 
-	if err := validate.Required("superuser", "body", bool(m.Superuser)); err != nil {
+	if err := validate.Required("databases", "body", m.Databases); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-// ContextValidate validates this superuser based on context it is used
-func (m *Superuser) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+// ContextValidate validates this databases based on context it is used
+func (m *Databases) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	return nil
 }
 
 // MarshalBinary interface implementation
-func (m *Superuser) MarshalBinary() ([]byte, error) {
+func (m *Databases) MarshalBinary() ([]byte, error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -61,8 +61,8 @@ func (m *Superuser) MarshalBinary() ([]byte, error) {
 }
 
 // UnmarshalBinary interface implementation
-func (m *Superuser) UnmarshalBinary(b []byte) error {
-	var res Superuser
+func (m *Databases) UnmarshalBinary(b []byte) error {
+	var res Databases
 	if err := swag.ReadJSON(b, &res); err != nil {
 		return err
 	}

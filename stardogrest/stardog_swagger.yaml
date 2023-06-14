@@ -4,16 +4,72 @@ info:
   title: stardogrest
   license:
     name: MIT
-host: stardog-namespace:5820
-basePath: "/admin"
+host: localhost:5820
 schemes:
 - http
 consumes:
 - application/json
 produces:
 - application/json
+security:
+    - BasicAuth: [ ]
 paths:
-  '/databases/{db}':
+  '/{db}/size':
+    get:
+      tags:
+        - db
+      summary: Get DB Size
+      description: Retrieve the size of the db. Size is approximate unless the exact parameter is set to true
+      operationId: getDBSize
+      produces:
+        - text/plain
+      parameters:
+        - name: db
+          in: path
+          description: Database name
+          required: true
+          type: string
+        - name: exact
+          in: query
+          description: Whether to request that the database size be exact instead of approximate
+          type: boolean
+      responses:
+        '200':
+          description: The size (in triples) of the database
+          schema:
+            type: string
+  /admin/databases:
+    get:
+      tags:
+        - db
+      summary: List databases
+      description: List all the databases in the server
+      operationId: listDatabases
+      responses:
+        '200':
+          description: Operation successful
+          schema:
+            "$ref": '#/definitions/Databases'
+    post:
+      tags:
+        - db
+      summary: Create database
+      description: 'Add a new database to the server, optionally with RDF bulk-loaded'
+      operationId: createNewDatabase
+      consumes:
+        - multipart/form-data
+      parameters:
+        - name: root
+          in: formData
+          required: true
+          description: The database to create.
+          type: string
+      responses:
+        '201':
+          description: Database created
+        '400':
+          description: Invalid or malformed request body
+  '/admin/databases/{db}':
     delete:
       tags:
         - db
@@ -35,15 +91,16 @@ paths:
           description: Database does not exist
           schema:
             "$ref": "#/definitions/DBMissing"
-
-  "/users":
+        default:
+          description: unexpected error
+          schema:
+            "$ref": "#/definitions/Error"
+  "/admin/users":
     get:
       summary: List all users.
       operationId: listUsers
       tags:
       - users
-      security:
-      - BasicAuth: []
       responses:
         '200':
           description: A dict containing an array of usernames
@@ -58,8 +115,6 @@ paths:
       operationId: createUser
       tags:
       - users
-      security:
-      - BasicAuth: []
       consumes:
       - application/json
       parameters:
@@ -75,14 +130,12 @@ paths:
           description: unexpected error
           schema:
             "$ref": "#/definitions/Error"
-  "/users/valid":
+  "/admin/users/valid":
     get:
       summary: Validate the user credentials
       operationId: validateUser
       tags:
       - users
-      security:
-      - BasicAuth: []
       responses:
         '200':
           description: Null response
@@ -90,14 +143,12 @@ paths:
           description: User invalid
           schema:
             "$ref": "#/definitions/Error"
-  "/users/{user}/pwd":
+  "/admin/users/{user}/pwd":
     put:
       summary: Change the users password.
       operationId: changePassword
       tags:
       - users
-      security:
-      - BasicAuth: []
       consumes:
       - application/json
       parameters:
@@ -119,14 +170,12 @@ paths:
           description: unexpected error
           schema:
             "$ref": "#/definitions/Error"
-  "/users/{user}/enabled":
+  "/admin/users/{user}/enabled":
     get:
       summary: Get the user's enabled status.
       operationId: isEnabled
       tags:
       - users
-      security:
-      - BasicAuth: []
       parameters:
       - name: user
         in: path
@@ -147,8 +196,7 @@ paths:
       operationId: setEnabled
       tags:
       - users
-      security:
-      - BasicAuth: []
+
       consumes:
       - application/json
       parameters:
@@ -170,14 +218,12 @@ paths:
           description: unexpected error
           schema:
             "$ref": "#/definitions/Error"
-  "/users/{user}/superuser":
+  "/admin/users/{user}/superuser":
     get:
       summary: Get the user's superuser status.
       operationId: isSuperuser
       tags:
       - users
-      security:
-      - BasicAuth: []
       parameters:
       - name: user
         in: path
@@ -193,15 +239,13 @@ paths:
           description: unexpected error
           schema:
             "$ref": "#/definitions/Error"
-  "/users/{user}/roles":
+  "/admin/users/{user}/roles":
     get:
       summary: List the users roles.
       operationId: listUserRoles
       tags:
       - users
         roles
-      security:
-      - BasicAuth: []
       parameters:
       - name: user
         in: path
@@ -223,8 +267,7 @@ paths:
       tags:
       - users
         roles
-      security:
-      - BasicAuth: []
+
       consumes:
       - application/json
       parameters:
@@ -252,8 +295,7 @@ paths:
       tags:
       - users
         roles
-      security:
-      - BasicAuth: []
+
       consumes:
       - application/json
       parameters:
@@ -275,15 +317,13 @@ paths:
           description: unexpected error
           schema:
             "$ref": "#/definitions/Error"
-  "/users/{user}/roles/{role}":
+  "/admin/users/{user}/roles/{role}":
     delete:
       summary: Remove a role from a user.
       operationId: removeRoleOfUser
       tags:
       - users
         roles
-      security:
-      - BasicAuth: []
       parameters:
       - name: user
         in: path
@@ -302,14 +342,12 @@ paths:
           description: unexpected error
           schema:
             "$ref": "#/definitions/Error"
-  "/users/{user}":
+  "/admin/users/{user}":
     delete:
       summary: Remove a user.
       operationId: removeUser
       tags:
       - users
-      security:
-      - BasicAuth: []
       parameters:
       - name: user
         in: path
@@ -323,14 +361,12 @@ paths:
           description: unexpected error
           schema:
             "$ref": "#/definitions/Error"
-  "/roles":
+  "/admin/roles":
     get:
       summary: List all roles.
       operationId: listRoles
       tags:
       - roles
-      security:
-      - BasicAuth: []
       responses:
         '200':
           description: A dict containing an array of rolenames
@@ -345,8 +381,6 @@ paths:
       operationId: createRole
       tags:
       - roles
-      security:
-      - BasicAuth: []
       consumes:
       - application/json
       parameters:
@@ -362,15 +396,13 @@ paths:
           description: unexpected error
           schema:
             "$ref": "#/definitions/Error"
-  "/roles/{role}/users":
+  "/admin/roles/{role}/users":
     get:
       summary: List the users with the given role.
       operationId: listRoleUsers
       tags:
       - users
         roles
-      security:
-      - BasicAuth: []
       parameters:
       - name: role
         in: path
@@ -386,14 +418,12 @@ paths:
           description: unexpected error
           schema:
             "$ref": "#/definitions/Error"
-  "/roles/{role}":
+  "/admin/roles/{role}":
     delete:
       summary: Remove a role.
       operationId: removeRole
       tags:
       - roles
-      security:
-      - BasicAuth: []
       parameters:
       - name: role
         in: path
@@ -413,15 +443,13 @@ paths:
           description: unexpected error
           schema:
             "$ref": "#/definitions/Error"
-  "/permissions/role/{role}":
+  "/admin/permissions/role/{role}":
     get:
       summary: List the role's permissions.
       operationId: listRolePermissions
       tags:
       - roles
         permissions
-      security:
-      - BasicAuth: []
       parameters:
       - name: role
         in: path
@@ -443,8 +471,7 @@ paths:
       tags:
       - roles
         permissions
-      security:
-      - BasicAuth: []
+
       consumes:
       - application/json
       parameters:
@@ -466,15 +493,13 @@ paths:
           description: unexpected error
           schema:
             "$ref": "#/definitions/Error"
-  "/permissions/user/{user}":
+  "/admin/permissions/user/{user}":
     get:
       summary: List the user's direct permissions (not via roles).
       operationId: listUserPermissions
       tags:
       - users
         permissions
-      security:
-      - BasicAuth: []
       parameters:
       - name: user
         in: path
@@ -496,8 +521,7 @@ paths:
       tags:
       - users
         permissions
-      security:
-      - BasicAuth: []
+
       consumes:
       - application/json
       parameters:
@@ -519,15 +543,13 @@ paths:
           description: unexpected error
           schema:
             "$ref": "#/definitions/Error"
-  "/permissions/role/{role}/delete":
+  "/admin/permissions/role/{role}/delete":
     post:
       summary: Remove a permission from a role.
       operationId: removeRolePermission
       tags:
       - roles
         permissions
-      security:
-      - BasicAuth: []
       consumes:
       - application/json
       parameters:
@@ -549,15 +571,13 @@ paths:
           description: unexpected error
           schema:
             "$ref": "#/definitions/Error"
-  "/permissions/user/{user}/delete":
+  "/admin/permissions/user/{user}/delete":
     post:
       summary: Remove a permission from a user.
       operationId: removeUserPermission
       tags:
       - users
         permissions
-      security:
-      - BasicAuth: []
       consumes:
       - application/json
       parameters:
@@ -579,15 +599,13 @@ paths:
           description: unexpected error
           schema:
             "$ref": "#/definitions/Error"
-  "/permissions/effective/user/{user}":
+  "/admin/permissions/effective/user/{user}":
     get:
       summary: List the user's effective permissions (all permissions).
       operationId: listEffectivePermissions
       tags:
       - users
         permissions
-      security:
-      - BasicAuth: []
       parameters:
       - name: user
         in: path
@@ -610,6 +628,7 @@ definitions:
     properties:
       enabled:
         type: boolean
+        default: false
   Error:
     required:
     - code
@@ -668,6 +687,7 @@ definitions:
     properties:
       superuser:
         type: boolean
+        default: false
   User:
     required:
     - username
@@ -677,6 +697,7 @@ definitions:
       username:
         type: string
       superuser:
+        default: false
         type: boolean
       password:
         type: array
@@ -708,3 +729,11 @@ definitions:
       code:
         type: string
         example: 0D0DU2
+  Databases:
+    required:
+      - databases
+    properties:
+      databases:
+        type: array
+        items:
+          type: string

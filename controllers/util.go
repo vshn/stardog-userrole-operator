@@ -170,6 +170,15 @@ func containsOperatorPermission(permissionsTypeA []*models.Permission, permissio
 	return false
 }
 
+func containsPermission(permissionsA []*models.Permission, permissionB models.Permission) bool {
+	for _, permissionA := range permissionsA {
+		if reflect.DeepEqual(*permissionA, permissionB) {
+			return true
+		}
+	}
+	return false
+}
+
 func equals(permissionTypeA models.Permission, permissionTypeB StardogPermissionSpec) bool {
 	var action bool
 	if permissionTypeA.Action == nil {

@@ -48,7 +48,7 @@ func (a *Client) CreateRole(params *CreateRoleParams, authInfo runtime.ClientAut
 	op := &runtime.ClientOperation{
 		ID:                 "createRole",
 		Method:             "POST",
-		PathPattern:        "/roles",
+		PathPattern:        "/admin/roles",
 		ProducesMediaTypes: []string{"application/json"},
 		ConsumesMediaTypes: []string{"application/json"},
 		Schemes:            []string{"http"},
@@ -86,7 +86,7 @@ func (a *Client) ListRoles(params *ListRolesParams, authInfo runtime.ClientAuthI
 	op := &runtime.ClientOperation{
 		ID:                 "listRoles",
 		Method:             "GET",
-		PathPattern:        "/roles",
+		PathPattern:        "/admin/roles",
 		ProducesMediaTypes: []string{"application/json"},
 		ConsumesMediaTypes: []string{"application/json"},
 		Schemes:            []string{"http"},
@@ -124,7 +124,7 @@ func (a *Client) RemoveRole(params *RemoveRoleParams, authInfo runtime.ClientAut
 	op := &runtime.ClientOperation{
 		ID:                 "removeRole",
 		Method:             "DELETE",
-		PathPattern:        "/roles/{role}",
+		PathPattern:        "/admin/roles/{role}",
 		ProducesMediaTypes: []string{"application/json"},
 		ConsumesMediaTypes: []string{"application/json"},
 		Schemes:            []string{"http"},

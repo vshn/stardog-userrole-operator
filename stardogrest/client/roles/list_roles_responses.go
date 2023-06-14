@@ -86,11 +86,11 @@ func (o *ListRolesOK) Code() int {
 }
 
 func (o *ListRolesOK) Error() string {
-	return fmt.Sprintf("[GET /roles][%d] listRolesOK  %+v", 200, o.Payload)
+	return fmt.Sprintf("[GET /admin/roles][%d] listRolesOK  %+v", 200, o.Payload)
 }
 
 func (o *ListRolesOK) String() string {
-	return fmt.Sprintf("[GET /roles][%d] listRolesOK  %+v", 200, o.Payload)
+	return fmt.Sprintf("[GET /admin/roles][%d] listRolesOK  %+v", 200, o.Payload)
 }
 
 func (o *ListRolesOK) GetPayload() *models.Roles {
@@ -158,11 +158,11 @@ func (o *ListRolesDefault) Code() int {
 }
 
 func (o *ListRolesDefault) Error() string {
-	return fmt.Sprintf("[GET /roles][%d] listRoles default  %+v", o._statusCode, o.Payload)
+	return fmt.Sprintf("[GET /admin/roles][%d] listRoles default  %+v", o._statusCode, o.Payload)
 }
 
 func (o *ListRolesDefault) String() string {
-	return fmt.Sprintf("[GET /roles][%d] listRoles default  %+v", o._statusCode, o.Payload)
+	return fmt.Sprintf("[GET /admin/roles][%d] listRoles default  %+v", o._statusCode, o.Payload)
 }
 
 func (o *ListRolesDefault) GetPayload() *models.Error {

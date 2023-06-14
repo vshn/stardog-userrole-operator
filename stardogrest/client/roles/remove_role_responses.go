@@ -85,11 +85,11 @@ func (o *RemoveRoleNoContent) Code() int {
 }
 
 func (o *RemoveRoleNoContent) Error() string {
-	return fmt.Sprintf("[DELETE /roles/{role}][%d] removeRoleNoContent ", 204)
+	return fmt.Sprintf("[DELETE /admin/roles/{role}][%d] removeRoleNoContent ", 204)
 }
 
 func (o *RemoveRoleNoContent) String() string {
-	return fmt.Sprintf("[DELETE /roles/{role}][%d] removeRoleNoContent ", 204)
+	return fmt.Sprintf("[DELETE /admin/roles/{role}][%d] removeRoleNoContent ", 204)
 }
 
 func (o *RemoveRoleNoContent) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
@@ -146,11 +146,11 @@ func (o *RemoveRoleDefault) Code() int {
 }
 
 func (o *RemoveRoleDefault) Error() string {
-	return fmt.Sprintf("[DELETE /roles/{role}][%d] removeRole default  %+v", o._statusCode, o.Payload)
+	return fmt.Sprintf("[DELETE /admin/roles/{role}][%d] removeRole default  %+v", o._statusCode, o.Payload)
 }
 
 func (o *RemoveRoleDefault) String() string {
-	return fmt.Sprintf("[DELETE /roles/{role}][%d] removeRole default  %+v", o._statusCode, o.Payload)
+	return fmt.Sprintf("[DELETE /admin/roles/{role}][%d] removeRole default  %+v", o._statusCode, o.Payload)
 }
 
 func (o *RemoveRoleDefault) GetPayload() *models.Error {

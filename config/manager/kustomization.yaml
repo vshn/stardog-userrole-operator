@@ -6,3 +6,6 @@ images:
 - name: controller
   newName: vshn/stardog-userrole-operator
   newTag: latest
+- name: image
+  newName: ghcr.io/zugao/stardog-userrole-operator
+  newTag: latest

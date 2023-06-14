@@ -85,11 +85,11 @@ func (o *SetEnabledOK) Code() int {
 }
 
 func (o *SetEnabledOK) Error() string {
-	return fmt.Sprintf("[PUT /users/{user}/enabled][%d] setEnabledOK ", 200)
+	return fmt.Sprintf("[PUT /admin/users/{user}/enabled][%d] setEnabledOK ", 200)
 }
 
 func (o *SetEnabledOK) String() string {
-	return fmt.Sprintf("[PUT /users/{user}/enabled][%d] setEnabledOK ", 200)
+	return fmt.Sprintf("[PUT /admin/users/{user}/enabled][%d] setEnabledOK ", 200)
 }
 
 func (o *SetEnabledOK) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
@@ -146,11 +146,11 @@ func (o *SetEnabledDefault) Code() int {
 }
 
 func (o *SetEnabledDefault) Error() string {
-	return fmt.Sprintf("[PUT /users/{user}/enabled][%d] setEnabled default  %+v", o._statusCode, o.Payload)
+	return fmt.Sprintf("[PUT /admin/users/{user}/enabled][%d] setEnabled default  %+v", o._statusCode, o.Payload)
 }
 
 func (o *SetEnabledDefault) String() string {
-	return fmt.Sprintf("[PUT /users/{user}/enabled][%d] setEnabled default  %+v", o._statusCode, o.Payload)
+	return fmt.Sprintf("[PUT /admin/users/{user}/enabled][%d] setEnabled default  %+v", o._statusCode, o.Payload)
 }
 
 func (o *SetEnabledDefault) GetPayload() *models.Error {

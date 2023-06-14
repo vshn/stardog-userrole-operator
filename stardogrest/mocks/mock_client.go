@@ -120,6 +120,26 @@ func (mr *MockStardogTestClientMockRecorder) ChangePassword(params, authInfo int
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChangePassword", reflect.TypeOf((*MockStardogTestClient)(nil).ChangePassword), varargs...)
 }
 
+// CreateNewDatabase mocks base method.
+func (m *MockStardogTestClient) CreateNewDatabase(params *db.CreateNewDatabaseParams, authInfo runtime.ClientAuthInfoWriter, opts ...db.ClientOption) (*db.CreateNewDatabaseCreated, error) {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{params, authInfo}
+	for _, a := range opts {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "CreateNewDatabase", varargs...)
+	ret0, _ := ret[0].(*db.CreateNewDatabaseCreated)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateNewDatabase indicates an expected call of CreateNewDatabase.
+func (mr *MockStardogTestClientMockRecorder) CreateNewDatabase(params, authInfo interface{}, opts ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{params, authInfo}, opts...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateNewDatabase", reflect.TypeOf((*MockStardogTestClient)(nil).CreateNewDatabase), varargs...)
+}
+
 // CreateRole mocks base method.
 func (m *MockStardogTestClient) CreateRole(params *roles.CreateRoleParams, authInfo runtime.ClientAuthInfoWriter, opts ...roles.ClientOption) (*roles.CreateRoleCreated, error) {
 	m.ctrl.T.Helper()
@@ -161,9 +181,9 @@ func (mr *MockStardogTestClientMockRecorder) CreateUser(params, authInfo interfa
 }
 
 // DropDatabase mocks base method.
-func (m *MockStardogTestClient) DropDatabase(params *db.DropDatabaseParams, opts ...db.ClientOption) (*db.DropDatabaseOK, error) {
+func (m *MockStardogTestClient) DropDatabase(params *db.DropDatabaseParams, authInfo runtime.ClientAuthInfoWriter, opts ...db.ClientOption) (*db.DropDatabaseOK, error) {
 	m.ctrl.T.Helper()
-	varargs := []interface{}{params}
+	varargs := []interface{}{params, authInfo}
 	for _, a := range opts {
 		varargs = append(varargs, a)
 	}
@@ -174,10 +194,30 @@ func (m *MockStardogTestClient) DropDatabase(params *db.DropDatabaseParams, opts
 }
 
 // DropDatabase indicates an expected call of DropDatabase.
-func (mr *MockStardogTestClientMockRecorder) DropDatabase(params interface{}, opts ...interface{}) *gomock.Call {
+func (mr *MockStardogTestClientMockRecorder) DropDatabase(params, authInfo interface{}, opts ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	varargs := append([]interface{}{params}, opts...)
+	varargs := append([]interface{}{params, authInfo}, opts...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropDatabase", reflect.TypeOf((*MockStardogTestClient)(nil).DropDatabase), varargs...)
+}
+
+// GetDBSize mocks base method.
+func (m *MockStardogTestClient) GetDBSize(params *db.GetDBSizeParams, authInfo runtime.ClientAuthInfoWriter, opts ...db.ClientOption) (*db.GetDBSizeOK, error) {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{params, authInfo}
+	for _, a := range opts {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "GetDBSize", varargs...)
+	ret0, _ := ret[0].(*db.GetDBSizeOK)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetDBSize indicates an expected call of GetDBSize.
+func (mr *MockStardogTestClientMockRecorder) GetDBSize(params, authInfo interface{}, opts ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{params, authInfo}, opts...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDBSize", reflect.TypeOf((*MockStardogTestClient)(nil).GetDBSize), varargs...)
 }
 
 // IsEnabled mocks base method.
@@ -218,6 +258,26 @@ func (mr *MockStardogTestClientMockRecorder) IsSuperuser(params, authInfo interf
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]interface{}{params, authInfo}, opts...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsSuperuser", reflect.TypeOf((*MockStardogTestClient)(nil).IsSuperuser), varargs...)
+}
+
+// ListDatabases mocks base method.
+func (m *MockStardogTestClient) ListDatabases(params *db.ListDatabasesParams, authInfo runtime.ClientAuthInfoWriter, opts ...db.ClientOption) (*db.ListDatabasesOK, error) {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{params, authInfo}
+	for _, a := range opts {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "ListDatabases", varargs...)
+	ret0, _ := ret[0].(*db.ListDatabasesOK)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListDatabases indicates an expected call of ListDatabases.
+func (mr *MockStardogTestClientMockRecorder) ListDatabases(params, authInfo interface{}, opts ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{params, authInfo}, opts...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListDatabases", reflect.TypeOf((*MockStardogTestClient)(nil).ListDatabases), varargs...)
 }
 
 // ListEffectivePermissions mocks base method.

@@ -85,11 +85,11 @@ func (o *ValidateUserOK) Code() int {
 }
 
 func (o *ValidateUserOK) Error() string {
-	return fmt.Sprintf("[GET /users/valid][%d] validateUserOK ", 200)
+	return fmt.Sprintf("[GET /admin/users/valid][%d] validateUserOK ", 200)
 }
 
 func (o *ValidateUserOK) String() string {
-	return fmt.Sprintf("[GET /users/valid][%d] validateUserOK ", 200)
+	return fmt.Sprintf("[GET /admin/users/valid][%d] validateUserOK ", 200)
 }
 
 func (o *ValidateUserOK) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
@@ -146,11 +146,11 @@ func (o *ValidateUserDefault) Code() int {
 }
 
 func (o *ValidateUserDefault) Error() string {
-	return fmt.Sprintf("[GET /users/valid][%d] validateUser default  %+v", o._statusCode, o.Payload)
+	return fmt.Sprintf("[GET /admin/users/valid][%d] validateUser default  %+v", o._statusCode, o.Payload)
 }
 
 func (o *ValidateUserDefault) String() string {
-	return fmt.Sprintf("[GET /users/valid][%d] validateUser default  %+v", o._statusCode, o.Payload)
+	return fmt.Sprintf("[GET /admin/users/valid][%d] validateUser default  %+v", o._statusCode, o.Payload)
 }
 
 func (o *ValidateUserDefault) GetPayload() *models.Error {

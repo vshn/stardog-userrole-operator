@@ -86,11 +86,11 @@ func (o *IsSuperuserOK) Code() int {
 }
 
 func (o *IsSuperuserOK) Error() string {
-	return fmt.Sprintf("[GET /users/{user}/superuser][%d] isSuperuserOK  %+v", 200, o.Payload)
+	return fmt.Sprintf("[GET /admin/users/{user}/superuser][%d] isSuperuserOK  %+v", 200, o.Payload)
 }
 
 func (o *IsSuperuserOK) String() string {
-	return fmt.Sprintf("[GET /users/{user}/superuser][%d] isSuperuserOK  %+v", 200, o.Payload)
+	return fmt.Sprintf("[GET /admin/users/{user}/superuser][%d] isSuperuserOK  %+v", 200, o.Payload)
 }
 
 func (o *IsSuperuserOK) GetPayload() *models.Superuser {
@@ -158,11 +158,11 @@ func (o *IsSuperuserDefault) Code() int {
 }
 
 func (o *IsSuperuserDefault) Error() string {
-	return fmt.Sprintf("[GET /users/{user}/superuser][%d] isSuperuser default  %+v", o._statusCode, o.Payload)
+	return fmt.Sprintf("[GET /admin/users/{user}/superuser][%d] isSuperuser default  %+v", o._statusCode, o.Payload)
 }
 
 func (o *IsSuperuserDefault) String() string {
-	return fmt.Sprintf("[GET /users/{user}/superuser][%d] isSuperuser default  %+v", o._statusCode, o.Payload)
+	return fmt.Sprintf("[GET /admin/users/{user}/superuser][%d] isSuperuser default  %+v", o._statusCode, o.Payload)
 }
 
 func (o *IsSuperuserDefault) GetPayload() *models.Error {

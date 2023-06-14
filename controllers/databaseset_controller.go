@@ -51,8 +51,8 @@ func (r *DatabaseSetReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 }
 
 // Creates a database from a DatabaseSet for a specific Instance ref
-func (r *DatabaseSetReconciler) createDatabase(ctx context.Context, databaseSet *stardogv1beta1.DatabaseSet, instanceRef stardogv1beta1.StardogInstanceRef) error {
-	combinedName := fmt.Sprintf("%s-%s", databaseSet.Name, instanceRef.Name)
+func (r *DatabaseSetReconciler) createDatabase(ctx context.Context, databaseSet *stardogv1beta1.DatabaseSet, instanceRef string) error {
+	combinedName := fmt.Sprintf("%s-%s", databaseSet.Name, instanceRef)
 	found := &stardogv1beta1.Database{}
 	err := r.Get(ctx, types.NamespacedName{Name: combinedName, Namespace: databaseSet.Namespace}, found)
 	if err != nil {
@@ -65,9 +65,9 @@ func (r *DatabaseSetReconciler) createDatabase(ctx context.Context, databaseSet 
 					Namespace: databaseSet.Namespace,
 				},
 				Spec: stardogv1beta1.DatabaseSpec{
-					DatabaseName:     databaseSet.Name,
-					InstanceRef:      instanceRef,
-					NamedGraphPrefix: databaseSet.Spec.NamedGraphPrefix,
+					DatabaseName:       databaseSet.Name,
+					StardogInstanceRef: instanceRef,
+					NamedGraphPrefix:   databaseSet.Spec.NamedGraphPrefix,
 				},
 			}
 

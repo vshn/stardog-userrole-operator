@@ -6,6 +6,7 @@ import (
 	"github.com/go-openapi/runtime"
 	auth "github.com/go-openapi/runtime/client"
 	httptransport "github.com/go-openapi/runtime/client"
+	"github.com/vshn/stardog-userrole-operator/api/v1beta1"
 	stardog "github.com/vshn/stardog-userrole-operator/stardogrest/client"
 	"net/url"
 
@@ -20,6 +21,11 @@ type ReconciliationContext struct {
 	conditions    map[StardogConditionType]StardogCondition
 	stardogClient *stardog.Stardog
 	namespace     string
+}
+
+type DatabaseReconciliation struct {
+	resource              *v1beta1.Database
+	reconciliationContext *ReconciliationContext
 }
 
 type StardogInstanceReconciliation struct {

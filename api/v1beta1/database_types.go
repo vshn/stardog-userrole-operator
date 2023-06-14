@@ -1,6 +1,7 @@
 package v1beta1
 
 import (
+	"github.com/vshn/stardog-userrole-operator/api/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -9,17 +10,20 @@ type DatabaseSpec struct {
 	//+kubebuilder:validation:required
 	DatabaseName string `json:"databaseName,omitempty"`
 
+	//+kubebuilder:validation:optional
+	Options string `json:"options,omitempty"`
+
 	//+kubebuilder:validation:required
 	// Instance contains the reference to the Stardog instance the database should exist in
-	InstanceRef StardogInstanceRef `json:"stardogInstanceRef,omitempty"`
+	StardogInstanceRef string `json:"stardogInstanceRef,omitempty"`
 
-	//+kubebuilder:validation:optional
+	//+kubebuilder:validation:required
 	NamedGraphPrefix string `json:"namedGraphPrefix,omitempty"`
 }
 
 // DatabaseStatus defines the observed state of the Database
 type DatabaseStatus struct {
-	Conditions []metav1.Condition `json:"conditions,omitempty"`
+	Conditions []v1alpha1.StardogCondition `json:"conditions,omitempty"`
 }
 
 //+kubebuilder:object:root=true

@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"github.com/vshn/stardog-userrole-operator/api/v1beta1"
 	stardog "github.com/vshn/stardog-userrole-operator/stardogrest/client"
 	"github.com/vshn/stardog-userrole-operator/stardogrest/client/users"
 	"net/url"
@@ -31,6 +32,7 @@ type StardogInstanceReconciler struct {
 
 const instanceUserFinalizer = "finalizer.stardog.instance.users"
 const instanceRoleFinalizer = "finalizer.stardog.instance.roles"
+const instanceDatabasesFinalizer = "finalizer.stardog.instance.databases"
 
 // +kubebuilder:rbac:groups=stardog.vshn.ch,resources=stardoginstances,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=stardog.vshn.ch,resources=stardoginstances/status,verbs=get;update;patch
@@ -95,6 +97,7 @@ func (r *StardogInstanceReconciler) ReconcileStardogInstance(sir *StardogInstanc
 
 	controllerutil.AddFinalizer(sir.resource, instanceUserFinalizer)
 	controllerutil.AddFinalizer(sir.resource, instanceRoleFinalizer)
+	controllerutil.AddFinalizer(sir.resource, instanceDatabasesFinalizer)
 
 	if err := r.Update(sir.reconciliationContext.context, sir.resource); err != nil {
 		rc.SetStatusCondition(createStatusConditionErrored(err))
@@ -120,6 +123,12 @@ func (r *StardogInstanceReconciler) deleteStardogInstance(sir *StardogInstanceRe
 			return err
 		}
 		controllerutil.RemoveFinalizer(stardogInstance, instanceRoleFinalizer)
+	}
+	if contains(stardogInstance.GetFinalizers(), instanceDatabasesFinalizer) {
+		if err := r.databaseFinalizer(sir); err != nil {
+			return err
+		}
+		controllerutil.RemoveFinalizer(stardogInstance, instanceDatabasesFinalizer)
 	}
 	if err := r.Update(rc.context, stardogInstance); err != nil {
 		return err
@@ -163,6 +172,26 @@ func (r *StardogInstanceReconciler) roleFinalizer(sir *StardogInstanceReconcilia
 	}
 	if len(items) > 0 {
 		return fmt.Errorf("cannot delete StardogInstance, found %s role CRDs", activeRoles)
+	}
+	return nil
+}
+
+func (r *StardogInstanceReconciler) databaseFinalizer(sir *StardogInstanceReconciliation) error {
+	resource := sir.resource
+	databasesList := &v1beta1.DatabaseList{}
+	err := r.Client.List(sir.reconciliationContext.context, databasesList, client.InNamespace(resource.Namespace))
+	if err != nil {
+		return fmt.Errorf("cannot list Stardog Databases CRDs: %v", err)
+	}
+	items := databasesList.Items
+	activeDatabases := make([]string, len(items))
+	for _, stardogDatabase := range items {
+		if stardogDatabase.Spec.StardogInstanceRef == resource.Name {
+			activeDatabases = append(activeDatabases, stardogDatabase.Name)
+		}
+	}
+	if len(items) > 0 {
+		return fmt.Errorf("cannot delete StardogInstance, found %s role CRDs", activeDatabases)
 	}
 	return nil
 }

@@ -25,7 +25,7 @@ type User struct {
 
 	// superuser
 	// Required: true
-	Superuser *bool `json:"superuser"`
+	Superuser bool `json:"superuser"`
 
 	// username
 	// Required: true
@@ -65,7 +65,7 @@ func (m *User) validatePassword(formats strfmt.Registry) error {
 
 func (m *User) validateSuperuser(formats strfmt.Registry) error {
 
-	if err := validate.Required("superuser", "body", m.Superuser); err != nil {
+	if err := validate.Required("superuser", "body", bool(m.Superuser)); err != nil {
 		return err
 	}
 

@@ -21,7 +21,7 @@ type Enabled struct {
 
 	// enabled
 	// Required: true
-	Enabled *bool `json:"enabled"`
+	Enabled bool `json:"enabled"`
 }
 
 // Validate validates this enabled
@@ -40,7 +40,7 @@ func (m *Enabled) Validate(formats strfmt.Registry) error {
 
 func (m *Enabled) validateEnabled(formats strfmt.Registry) error {
 
-	if err := validate.Required("enabled", "body", m.Enabled); err != nil {
+	if err := validate.Required("enabled", "body", bool(m.Enabled)); err != nil {
 		return err
 	}
 

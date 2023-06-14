@@ -11,7 +11,7 @@ type DatabaseSetSpec struct {
 
 	//+kubebuilder:validation:required
 	// Instances contains the references to the Stardog instances the database should exist in
-	Instances []StardogInstanceRef `json:"stardogInstanceRefs,omitempty"`
+	Instances []string `json:"stardogInstanceRefs,omitempty"`
 }
 
 // DatabaseSetStatus defines the observed state of the Database

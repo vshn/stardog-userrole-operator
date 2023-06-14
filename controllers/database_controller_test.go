@@ -40,7 +40,7 @@ var _ = Describe("Database controller", func() {
 			Spec: stardogv1beta1.DatabaseSpec{
 				NamedGraphPrefix: NamedGraphPrefix,
 				DatabaseName:     DatabaseName,
-				InstanceRef: stardogv1beta1.StardogInstanceRef{
+				StardogInstanceRef: stardogv1beta1.StardogInstanceRef{
 					Name: InstanceName,
 				},
 			},

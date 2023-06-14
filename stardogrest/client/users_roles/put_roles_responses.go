@@ -85,11 +85,11 @@ func (o *PutRolesOK) Code() int {
 }
 
 func (o *PutRolesOK) Error() string {
-	return fmt.Sprintf("[PUT /users/{user}/roles][%d] putRolesOK ", 200)
+	return fmt.Sprintf("[PUT /admin/users/{user}/roles][%d] putRolesOK ", 200)
 }
 
 func (o *PutRolesOK) String() string {
-	return fmt.Sprintf("[PUT /users/{user}/roles][%d] putRolesOK ", 200)
+	return fmt.Sprintf("[PUT /admin/users/{user}/roles][%d] putRolesOK ", 200)
 }
 
 func (o *PutRolesOK) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
@@ -146,11 +146,11 @@ func (o *PutRolesDefault) Code() int {
 }
 
 func (o *PutRolesDefault) Error() string {
-	return fmt.Sprintf("[PUT /users/{user}/roles][%d] putRoles default  %+v", o._statusCode, o.Payload)
+	return fmt.Sprintf("[PUT /admin/users/{user}/roles][%d] putRoles default  %+v", o._statusCode, o.Payload)
 }
 
 func (o *PutRolesDefault) String() string {
-	return fmt.Sprintf("[PUT /users/{user}/roles][%d] putRoles default  %+v", o._statusCode, o.Payload)
+	return fmt.Sprintf("[PUT /admin/users/{user}/roles][%d] putRoles default  %+v", o._statusCode, o.Payload)
 }
 
 func (o *PutRolesDefault) GetPayload() *models.Error {

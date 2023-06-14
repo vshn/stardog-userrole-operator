@@ -85,11 +85,11 @@ func (o *RemoveUserPermissionCreated) Code() int {
 }
 
 func (o *RemoveUserPermissionCreated) Error() string {
-	return fmt.Sprintf("[POST /permissions/user/{user}/delete][%d] removeUserPermissionCreated ", 201)
+	return fmt.Sprintf("[POST /admin/permissions/user/{user}/delete][%d] removeUserPermissionCreated ", 201)
 }
 
 func (o *RemoveUserPermissionCreated) String() string {
-	return fmt.Sprintf("[POST /permissions/user/{user}/delete][%d] removeUserPermissionCreated ", 201)
+	return fmt.Sprintf("[POST /admin/permissions/user/{user}/delete][%d] removeUserPermissionCreated ", 201)
 }
 
 func (o *RemoveUserPermissionCreated) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
@@ -146,11 +146,11 @@ func (o *RemoveUserPermissionDefault) Code() int {
 }
 
 func (o *RemoveUserPermissionDefault) Error() string {
-	return fmt.Sprintf("[POST /permissions/user/{user}/delete][%d] removeUserPermission default  %+v", o._statusCode, o.Payload)
+	return fmt.Sprintf("[POST /admin/permissions/user/{user}/delete][%d] removeUserPermission default  %+v", o._statusCode, o.Payload)
 }
 
 func (o *RemoveUserPermissionDefault) String() string {
-	return fmt.Sprintf("[POST /permissions/user/{user}/delete][%d] removeUserPermission default  %+v", o._statusCode, o.Payload)
+	return fmt.Sprintf("[POST /admin/permissions/user/{user}/delete][%d] removeUserPermission default  %+v", o._statusCode, o.Payload)
 }
 
 func (o *RemoveUserPermissionDefault) GetPayload() *models.Error {

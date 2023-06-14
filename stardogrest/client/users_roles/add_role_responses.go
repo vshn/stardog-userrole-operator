@@ -85,11 +85,11 @@ func (o *AddRoleNoContent) Code() int {
 }
 
 func (o *AddRoleNoContent) Error() string {
-	return fmt.Sprintf("[POST /users/{user}/roles][%d] addRoleNoContent ", 204)
+	return fmt.Sprintf("[POST /admin/users/{user}/roles][%d] addRoleNoContent ", 204)
 }
 
 func (o *AddRoleNoContent) String() string {
-	return fmt.Sprintf("[POST /users/{user}/roles][%d] addRoleNoContent ", 204)
+	return fmt.Sprintf("[POST /admin/users/{user}/roles][%d] addRoleNoContent ", 204)
 }
 
 func (o *AddRoleNoContent) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
@@ -146,11 +146,11 @@ func (o *AddRoleDefault) Code() int {
 }
 
 func (o *AddRoleDefault) Error() string {
-	return fmt.Sprintf("[POST /users/{user}/roles][%d] addRole default  %+v", o._statusCode, o.Payload)
+	return fmt.Sprintf("[POST /admin/users/{user}/roles][%d] addRole default  %+v", o._statusCode, o.Payload)
 }
 
 func (o *AddRoleDefault) String() string {
-	return fmt.Sprintf("[POST /users/{user}/roles][%d] addRole default  %+v", o._statusCode, o.Payload)
+	return fmt.Sprintf("[POST /admin/users/{user}/roles][%d] addRole default  %+v", o._statusCode, o.Payload)
 }
 
 func (o *AddRoleDefault) GetPayload() *models.Error {

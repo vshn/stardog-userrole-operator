@@ -185,7 +185,7 @@ func (r *StardogUserReconciler) syncUser(sur *StardogUserReconciliation) error {
 	user := &models.User{
 		Username:  &username,
 		Password:  []string{password},
-		Superuser: &superuser,
+		Superuser: superuser,
 	}
 	stardogClient := rc.stardogClient
 	usersObject, err := stardogClient.Users.ListUsers(nil, auth)

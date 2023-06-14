@@ -86,11 +86,11 @@ func (o *ListUserPermissionsOK) Code() int {
 }
 
 func (o *ListUserPermissionsOK) Error() string {
-	return fmt.Sprintf("[GET /permissions/user/{user}][%d] listUserPermissionsOK  %+v", 200, o.Payload)
+	return fmt.Sprintf("[GET /admin/permissions/user/{user}][%d] listUserPermissionsOK  %+v", 200, o.Payload)
 }
 
 func (o *ListUserPermissionsOK) String() string {
-	return fmt.Sprintf("[GET /permissions/user/{user}][%d] listUserPermissionsOK  %+v", 200, o.Payload)
+	return fmt.Sprintf("[GET /admin/permissions/user/{user}][%d] listUserPermissionsOK  %+v", 200, o.Payload)
 }
 
 func (o *ListUserPermissionsOK) GetPayload() *models.Permissions {
@@ -158,11 +158,11 @@ func (o *ListUserPermissionsDefault) Code() int {
 }
 
 func (o *ListUserPermissionsDefault) Error() string {
-	return fmt.Sprintf("[GET /permissions/user/{user}][%d] listUserPermissions default  %+v", o._statusCode, o.Payload)
+	return fmt.Sprintf("[GET /admin/permissions/user/{user}][%d] listUserPermissions default  %+v", o._statusCode, o.Payload)
 }
 
 func (o *ListUserPermissionsDefault) String() string {
-	return fmt.Sprintf("[GET /permissions/user/{user}][%d] listUserPermissions default  %+v", o._statusCode, o.Payload)
+	return fmt.Sprintf("[GET /admin/permissions/user/{user}][%d] listUserPermissions default  %+v", o._statusCode, o.Payload)
 }
 
 func (o *ListUserPermissionsDefault) GetPayload() *models.Error {

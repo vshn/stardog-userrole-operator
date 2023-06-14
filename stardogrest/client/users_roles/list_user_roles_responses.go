@@ -86,11 +86,11 @@ func (o *ListUserRolesOK) Code() int {
 }
 
 func (o *ListUserRolesOK) Error() string {
-	return fmt.Sprintf("[GET /users/{user}/roles][%d] listUserRolesOK  %+v", 200, o.Payload)
+	return fmt.Sprintf("[GET /admin/users/{user}/roles][%d] listUserRolesOK  %+v", 200, o.Payload)
 }
 
 func (o *ListUserRolesOK) String() string {
-	return fmt.Sprintf("[GET /users/{user}/roles][%d] listUserRolesOK  %+v", 200, o.Payload)
+	return fmt.Sprintf("[GET /admin/users/{user}/roles][%d] listUserRolesOK  %+v", 200, o.Payload)
 }
 
 func (o *ListUserRolesOK) GetPayload() *models.Roles {
@@ -158,11 +158,11 @@ func (o *ListUserRolesDefault) Code() int {
 }
 
 func (o *ListUserRolesDefault) Error() string {
-	return fmt.Sprintf("[GET /users/{user}/roles][%d] listUserRoles default  %+v", o._statusCode, o.Payload)
+	return fmt.Sprintf("[GET /admin/users/{user}/roles][%d] listUserRoles default  %+v", o._statusCode, o.Payload)
 }
 
 func (o *ListUserRolesDefault) String() string {
-	return fmt.Sprintf("[GET /users/{user}/roles][%d] listUserRoles default  %+v", o._statusCode, o.Payload)
+	return fmt.Sprintf("[GET /admin/users/{user}/roles][%d] listUserRoles default  %+v", o._statusCode, o.Payload)
 }
 
 func (o *ListUserRolesDefault) GetPayload() *models.Error {

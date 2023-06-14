@@ -85,11 +85,11 @@ func (o *RemoveUserNoContent) Code() int {
 }
 
 func (o *RemoveUserNoContent) Error() string {
-	return fmt.Sprintf("[DELETE /users/{user}][%d] removeUserNoContent ", 204)
+	return fmt.Sprintf("[DELETE /admin/users/{user}][%d] removeUserNoContent ", 204)
 }
 
 func (o *RemoveUserNoContent) String() string {
-	return fmt.Sprintf("[DELETE /users/{user}][%d] removeUserNoContent ", 204)
+	return fmt.Sprintf("[DELETE /admin/users/{user}][%d] removeUserNoContent ", 204)
 }
 
 func (o *RemoveUserNoContent) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
@@ -146,11 +146,11 @@ func (o *RemoveUserDefault) Code() int {
 }
 
 func (o *RemoveUserDefault) Error() string {
-	return fmt.Sprintf("[DELETE /users/{user}][%d] removeUser default  %+v", o._statusCode, o.Payload)
+	return fmt.Sprintf("[DELETE /admin/users/{user}][%d] removeUser default  %+v", o._statusCode, o.Payload)
 }
 
 func (o *RemoveUserDefault) String() string {
-	return fmt.Sprintf("[DELETE /users/{user}][%d] removeUser default  %+v", o._statusCode, o.Payload)
+	return fmt.Sprintf("[DELETE /admin/users/{user}][%d] removeUser default  %+v", o._statusCode, o.Payload)
 }
 
 func (o *RemoveUserDefault) GetPayload() *models.Error {

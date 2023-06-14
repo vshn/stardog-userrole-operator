@@ -48,7 +48,7 @@ func (a *Client) AddRolePermission(params *AddRolePermissionParams, authInfo run
 	op := &runtime.ClientOperation{
 		ID:                 "addRolePermission",
 		Method:             "PUT",
-		PathPattern:        "/permissions/role/{role}",
+		PathPattern:        "/admin/permissions/role/{role}",
 		ProducesMediaTypes: []string{"application/json"},
 		ConsumesMediaTypes: []string{"application/json"},
 		Schemes:            []string{"http"},
@@ -86,7 +86,7 @@ func (a *Client) ListRolePermissions(params *ListRolePermissionsParams, authInfo
 	op := &runtime.ClientOperation{
 		ID:                 "listRolePermissions",
 		Method:             "GET",
-		PathPattern:        "/permissions/role/{role}",
+		PathPattern:        "/admin/permissions/role/{role}",
 		ProducesMediaTypes: []string{"application/json"},
 		ConsumesMediaTypes: []string{"application/json"},
 		Schemes:            []string{"http"},
@@ -124,7 +124,7 @@ func (a *Client) RemoveRolePermission(params *RemoveRolePermissionParams, authIn
 	op := &runtime.ClientOperation{
 		ID:                 "removeRolePermission",
 		Method:             "POST",
-		PathPattern:        "/permissions/role/{role}/delete",
+		PathPattern:        "/admin/permissions/role/{role}/delete",
 		ProducesMediaTypes: []string{"application/json"},
 		ConsumesMediaTypes: []string{"application/json"},
 		Schemes:            []string{"http"},

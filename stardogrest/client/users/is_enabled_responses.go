@@ -86,11 +86,11 @@ func (o *IsEnabledOK) Code() int {
 }
 
 func (o *IsEnabledOK) Error() string {
-	return fmt.Sprintf("[GET /users/{user}/enabled][%d] isEnabledOK  %+v", 200, o.Payload)
+	return fmt.Sprintf("[GET /admin/users/{user}/enabled][%d] isEnabledOK  %+v", 200, o.Payload)
 }
 
 func (o *IsEnabledOK) String() string {
-	return fmt.Sprintf("[GET /users/{user}/enabled][%d] isEnabledOK  %+v", 200, o.Payload)
+	return fmt.Sprintf("[GET /admin/users/{user}/enabled][%d] isEnabledOK  %+v", 200, o.Payload)
 }
 
 func (o *IsEnabledOK) GetPayload() *models.Enabled {
@@ -158,11 +158,11 @@ func (o *IsEnabledDefault) Code() int {
 }
 
 func (o *IsEnabledDefault) Error() string {
-	return fmt.Sprintf("[GET /users/{user}/enabled][%d] isEnabled default  %+v", o._statusCode, o.Payload)
+	return fmt.Sprintf("[GET /admin/users/{user}/enabled][%d] isEnabled default  %+v", o._statusCode, o.Payload)
 }
 
 func (o *IsEnabledDefault) String() string {
-	return fmt.Sprintf("[GET /users/{user}/enabled][%d] isEnabled default  %+v", o._statusCode, o.Payload)
+	return fmt.Sprintf("[GET /admin/users/{user}/enabled][%d] isEnabled default  %+v", o._statusCode, o.Payload)
 }
 
 func (o *IsEnabledDefault) GetPayload() *models.Error {
