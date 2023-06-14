@@ -4,18 +4,19 @@ import (
 	"context"
 	"encoding/base64"
 	"errors"
+	stardog_client "github.com/vshn/stardog-userrole-operator/stardogrest/client"
+	"github.com/vshn/stardog-userrole-operator/stardogrest/client/users"
+	"github.com/vshn/stardog-userrole-operator/stardogrest/client/users_roles"
+	"github.com/vshn/stardog-userrole-operator/stardogrest/models"
 	"os"
 	"testing"
 	"time"
 
-	"github.com/Azure/go-autorest/autorest"
-	testr "github.com/go-logr/logr/testr"
+	"github.com/go-logr/logr/testr"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/vshn/stardog-userrole-operator/api/v1alpha1"
-	"github.com/vshn/stardog-userrole-operator/stardogrest"
-	stardogrestapi "github.com/vshn/stardog-userrole-operator/stardogrest/mocks"
-	stardogrestapi2 "github.com/vshn/stardog-userrole-operator/stardogrest/stardogrestapi"
+	stardogmock "github.com/vshn/stardog-userrole-operator/stardogrest/mocks"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -34,14 +35,15 @@ func Test_deleteStardogUser(t *testing.T) {
 	secretNameUser := "user-secret-test"
 	usernameUser := "user"
 	passwordUser := "1234"
-	serverURL := "server"
+	serverURL := "http://server:8080"
 	roles := []string{"role1", "role2"}
 	err := v1alpha1.AddToScheme(scheme.Scheme)
 	assert.NoError(t, err)
 
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
-	stardogClient := stardogrestapi.NewMockExtendedBaseClientAPI(mockCtrl)
+	stardogMocked := stardogmock.NewMockStardogTestClient(mockCtrl)
+	stardogClient := createStardogClientFromMock(stardogMocked)
 
 	tests := []struct {
 		name               string
@@ -50,7 +52,7 @@ func Test_deleteStardogUser(t *testing.T) {
 		secretAdmin        v1.Secret
 		secretUser         v1.Secret
 		sur                StardogUserReconciliation
-		condition          func(stardogrestapi2.ExtendedBaseClientAPI)
+		condition          func(stardog_client.Stardog)
 		expectedFinalizers []string
 		err                error
 	}{
@@ -69,8 +71,8 @@ func Test_deleteStardogUser(t *testing.T) {
 				},
 				resource: createStardogUserWithFinalizer(namespace, stardogUserName, stardogInstanceRef, secretNameAdmin, roles),
 			},
-			condition: func(stardogrestapi2.ExtendedBaseClientAPI) {
-				stardogClient.EXPECT().
+			condition: func(stardog_client.Stardog) {
+				stardogMocked.EXPECT().
 					RemoveUser(gomock.Any(), gomock.Any())
 			},
 			expectedFinalizers: nil,
@@ -91,10 +93,10 @@ func Test_deleteStardogUser(t *testing.T) {
 				},
 				resource: createStardogUserWithFinalizer(namespace, stardogUserName, stardogInstanceRef, secretNameUser, roles),
 			},
-			condition: func(stardogrestapi2.ExtendedBaseClientAPI) {
-				stardogClient.EXPECT().
+			condition: func(stardog_client.Stardog) {
+				stardogMocked.EXPECT().
 					RemoveUser(gomock.Any(), gomock.Any()).
-					Return(autorest.Response{}, errors.New("cannot remove user"))
+					Return(users.NewRemoveUserNoContent(), errors.New("cannot remove user"))
 			},
 			expectedFinalizers: []string{userFinalizer},
 			err:                errors.New("cannot remove Stardog user namespace-test/dXNlcg==: cannot remove user"),
@@ -111,8 +113,8 @@ func Test_deleteStardogUser(t *testing.T) {
 				Scheme:            scheme.Scheme,
 				Client:            fakeKubeClient,
 			}
-			tt.condition(stardogClient)
-			stardogClient.EXPECT().SetConnection(gomock.Any(), gomock.Any(), gomock.Any())
+			tt.condition(*stardogClient)
+			stardogMocked.EXPECT().SetTransport(gomock.Any()).AnyTimes()
 
 			err = fakeKubeClient.Get(context.Background(), types.NamespacedName{
 				Namespace: namespace,
@@ -200,15 +202,16 @@ func Test_syncUser(t *testing.T) {
 	role3 := "roleC"
 	roles1 := []string{role1, role2}
 	roles2 := []string{role3, role2}
-	ctx := context.Background()
 
 	err := v1alpha1.AddToScheme(scheme.Scheme)
 	assert.NoError(t, err)
 
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
-	stardogClient := stardogrestapi.NewMockExtendedBaseClientAPI(mockCtrl)
+	stardogMocked := stardogmock.NewMockStardogTestClient(mockCtrl)
+	stardogClient := createStardogClientFromMock(stardogMocked)
 	encodedUser := base64.StdEncoding.EncodeToString([]byte(usernameUser))
+	encodedPwd := base64.StdEncoding.EncodeToString([]byte(passwordUser))
 
 	tests := []struct {
 		name            string
@@ -217,7 +220,7 @@ func Test_syncUser(t *testing.T) {
 		secretAdmin     v1.Secret
 		secretUser      v1.Secret
 		sur             StardogUserReconciliation
-		expectations    []func(stardogrestapi2.ExtendedBaseClientAPI)
+		expectations    []func(stardog_client.Stardog)
 		err             error
 	}{
 		{
@@ -235,46 +238,37 @@ func Test_syncUser(t *testing.T) {
 				},
 				resource: createStardogUser(namespace, stardogUser, stardogInstanceRef, secretNameUser, roles1),
 			},
-			expectations: []func(stardogrestapi2.ExtendedBaseClientAPI){
-				func(stardogrestapi2.ExtendedBaseClientAPI) {
-					stardogClient.
+			expectations: []func(stardog_client.Stardog){
+				func(stardog_client.Stardog) {
+					stardogMocked.
 						EXPECT().
-						SetConnection(
-							serverURL,
-							base64.StdEncoding.EncodeToString([]byte(usernameAdmin)),
-							base64.StdEncoding.EncodeToString([]byte(passwordAdmin))).
+						ListUsers(gomock.Any(), gomock.Any()).
+						Return(&users.ListUsersOK{Payload: &models.Users{Users: []string{}}}, nil).
 						Times(1)
 				},
-				func(stardogrestapi2.ExtendedBaseClientAPI) {
-					stardogClient.
+				func(stardog_client.Stardog) {
+					stardogMocked.
 						EXPECT().
-						ListUsers(ctx).
-						Return(stardogrest.Users{Users: &[]string{}}, nil).
+						CreateUser(gomock.Any(), gomock.Any()).
 						Times(1)
 				},
-				func(stardogrestapi2.ExtendedBaseClientAPI) {
-					stardogClient.
+				func(stardog_client.Stardog) {
+					stardogMocked.
 						EXPECT().
-						CreateUser(ctx, gomock.Any()).
+						ListUserRoles(users_roles.NewListUserRolesParams().WithUser(encodedUser), gomock.Any()).
+						Return(&users_roles.ListUserRolesOK{Payload: &models.Roles{Roles: []string{}}}, nil).
 						Times(1)
 				},
-				func(stardogrestapi2.ExtendedBaseClientAPI) {
-					stardogClient.
+				func(stardog_client.Stardog) {
+					stardogMocked.
 						EXPECT().
-						ListUserRoles(ctx, encodedUser).
-						Return(stardogrest.Roles{Roles: &[]string{}}, nil).
+						AddRole(users_roles.NewAddRoleParams().WithUser(encodedUser).WithRole(&models.Rolename{Rolename: &role1}), gomock.Any()).
 						Times(1)
 				},
-				func(stardogrestapi2.ExtendedBaseClientAPI) {
-					stardogClient.
+				func(stardog_client.Stardog) {
+					stardogMocked.
 						EXPECT().
-						AddRole(ctx, encodedUser, stardogrest.Rolename{Rolename: &role1}).
-						Times(1)
-				},
-				func(stardogrestapi2.ExtendedBaseClientAPI) {
-					stardogClient.
-						EXPECT().
-						AddRole(ctx, encodedUser, stardogrest.Rolename{Rolename: &role2}).
+						AddRole(users_roles.NewAddRoleParams().WithUser(encodedUser).WithRole(&models.Rolename{Rolename: &role2}), gomock.Any()).
 						Times(1)
 				},
 			},
@@ -295,46 +289,37 @@ func Test_syncUser(t *testing.T) {
 				},
 				resource: createStardogUser(namespace, stardogUser, stardogInstanceRef, secretNameUser, roles1),
 			},
-			expectations: []func(stardogrestapi2.ExtendedBaseClientAPI){
-				func(stardogrestapi2.ExtendedBaseClientAPI) {
-					stardogClient.
+			expectations: []func(stardog_client.Stardog){
+				func(stardog_client.Stardog) {
+					stardogMocked.
 						EXPECT().
-						SetConnection(
-							serverURL,
-							base64.StdEncoding.EncodeToString([]byte(usernameAdmin)),
-							base64.StdEncoding.EncodeToString([]byte(passwordAdmin))).
+						ListUsers(gomock.Any(), gomock.Any()).
+						Return(&users.ListUsersOK{Payload: &models.Users{Users: []string{"random-user"}}}, nil).
 						Times(1)
 				},
-				func(stardogrestapi2.ExtendedBaseClientAPI) {
-					stardogClient.
+				func(stardog_client.Stardog) {
+					stardogMocked.
 						EXPECT().
-						ListUsers(ctx).
-						Return(stardogrest.Users{Users: &[]string{"random-user"}}, nil).
+						CreateUser(gomock.Any(), gomock.Any()).
 						Times(1)
 				},
-				func(stardogrestapi2.ExtendedBaseClientAPI) {
-					stardogClient.
+				func(stardog_client.Stardog) {
+					stardogMocked.
 						EXPECT().
-						CreateUser(ctx, gomock.Any()).
+						ListUserRoles(gomock.Any(), gomock.Any()).
+						Return(&users_roles.ListUserRolesOK{Payload: &models.Roles{Roles: []string{}}}, nil).
 						Times(1)
 				},
-				func(stardogrestapi2.ExtendedBaseClientAPI) {
-					stardogClient.
+				func(stardog_client.Stardog) {
+					stardogMocked.
 						EXPECT().
-						ListUserRoles(ctx, encodedUser).
-						Return(stardogrest.Roles{Roles: &[]string{}}, nil).
+						AddRole(users_roles.NewAddRoleParams().WithUser(encodedUser).WithRole(&models.Rolename{Rolename: &role1}), gomock.Any()).
 						Times(1)
 				},
-				func(stardogrestapi2.ExtendedBaseClientAPI) {
-					stardogClient.
+				func(stardog_client.Stardog) {
+					stardogMocked.
 						EXPECT().
-						AddRole(ctx, encodedUser, stardogrest.Rolename{Rolename: &role1}).
-						Times(1)
-				},
-				func(stardogrestapi2.ExtendedBaseClientAPI) {
-					stardogClient.
-						EXPECT().
-						AddRole(ctx, encodedUser, stardogrest.Rolename{Rolename: &role2}).
+						AddRole(users_roles.NewAddRoleParams().WithUser(encodedUser).WithRole(&models.Rolename{Rolename: &role2}), gomock.Any()).
 						Times(1)
 				},
 			},
@@ -355,46 +340,41 @@ func Test_syncUser(t *testing.T) {
 				},
 				resource: createStardogUser(namespace, stardogUser, stardogInstanceRef, secretNameUser, roles2),
 			},
-			expectations: []func(stardogrestapi2.ExtendedBaseClientAPI){
-				func(stardogrestapi2.ExtendedBaseClientAPI) {
-					stardogClient.
+			expectations: []func(stardog_client.Stardog){
+				func(stardog_client.Stardog) {
+					stardogMocked.
 						EXPECT().
-						SetConnection(
-							serverURL,
-							base64.StdEncoding.EncodeToString([]byte(usernameAdmin)),
-							base64.StdEncoding.EncodeToString([]byte(passwordAdmin))).
+						ListUsers(gomock.Any(), gomock.Any()).
+						Return(&users.ListUsersOK{Payload: &models.Users{Users: []string{encodedUser}}}, nil).
 						Times(1)
 				},
-				func(stardogrestapi2.ExtendedBaseClientAPI) {
-					stardogClient.
+				func(stardog_client.Stardog) {
+					stardogMocked.
 						EXPECT().
-						ListUsers(ctx).
-						Return(stardogrest.Users{Users: &[]string{encodedUser}}, nil).
+						ChangePassword(
+							users.NewChangePasswordParams().
+								WithUser(encodedUser).
+								WithPassword(&models.Password{Password: &encodedPwd}),
+							gomock.Any()).
 						Times(1)
 				},
-				func(stardogrestapi2.ExtendedBaseClientAPI) {
-					stardogClient.
+				func(stardog_client.Stardog) {
+					stardogMocked.
 						EXPECT().
-						ChangePassword(ctx, encodedUser, gomock.Any()).
+						ListUserRoles(users_roles.NewListUserRolesParams().WithUser(encodedUser), gomock.Any()).
+						Return(&users_roles.ListUserRolesOK{Payload: &models.Roles{Roles: roles1}}, nil).
 						Times(1)
 				},
-				func(stardogrestapi2.ExtendedBaseClientAPI) {
-					stardogClient.
+				func(stardog_client.Stardog) {
+					stardogMocked.
 						EXPECT().
-						ListUserRoles(ctx, encodedUser).
-						Return(stardogrest.Roles{Roles: &roles1}, nil).
+						AddRole(users_roles.NewAddRoleParams().WithUser(encodedUser).WithRole(&models.Rolename{Rolename: &role3}), gomock.Any()).
 						Times(1)
 				},
-				func(stardogrestapi2.ExtendedBaseClientAPI) {
-					stardogClient.
+				func(stardog_client.Stardog) {
+					stardogMocked.
 						EXPECT().
-						AddRole(ctx, encodedUser, stardogrest.Rolename{Rolename: &role3}).
-						Times(1)
-				},
-				func(stardogrestapi2.ExtendedBaseClientAPI) {
-					stardogClient.
-						EXPECT().
-						RemoveRole(ctx, encodedUser, role1).
+						RemoveRoleOfUser(users_roles.NewRemoveRoleOfUserParams().WithUser(encodedUser).WithRole(role1), gomock.Any()).
 						Times(1)
 				},
 			},
@@ -413,8 +393,10 @@ func Test_syncUser(t *testing.T) {
 				Client:            fakeKubeClient,
 			}
 			for _, addExpectation := range tt.expectations {
-				addExpectation(tt.sur.reconciliationContext.stardogClient)
+				addExpectation(*tt.sur.reconciliationContext.stardogClient)
 			}
+			stardogMocked.EXPECT().SetTransport(gomock.Any()).AnyTimes()
+
 			err = r.syncUser(&tt.sur)
 
 			assert.Equal(t, tt.err, err)
@@ -492,7 +474,8 @@ func Test_ReconcileStardogUser(t *testing.T) {
 
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
-	stardogClient := stardogrestapi.NewMockExtendedBaseClientAPI(mockCtrl)
+	stardogMocked := stardogmock.NewMockStardogTestClient(mockCtrl)
+	stardogClient := createStardogClientFromMock(stardogMocked)
 
 	tests := []struct {
 		name            string
@@ -502,7 +485,7 @@ func Test_ReconcileStardogUser(t *testing.T) {
 		stardogUser     v1alpha1.StardogUser
 		sur             StardogUserReconciliation
 		secret          v1.Secret
-		expectations    []func(stardogrestapi2.ExtendedBaseClientAPI)
+		expectations    []func(stardog_client.Stardog)
 		expectedResult  ctrl.Result
 	}{
 		{
@@ -521,13 +504,9 @@ func Test_ReconcileStardogUser(t *testing.T) {
 				},
 				resource: createStardogUser(namespace, stardogUserName, stardogInstanceName, secretName, []string{}),
 			},
-			expectations: []func(stardogrestapi2.ExtendedBaseClientAPI){
-				func(stardogrestapi2.ExtendedBaseClientAPI) {
-					stardogClient.EXPECT().
-						SetConnection(gomock.Any(), gomock.Any(), gomock.Any())
-				},
-				func(stardogrestapi2.ExtendedBaseClientAPI) {
-					stardogClient.EXPECT().
+			expectations: []func(stardog_client.Stardog){
+				func(stardog_client.Stardog) {
+					stardogMocked.EXPECT().
 						RemoveUser(gomock.Any(), gomock.Any())
 				},
 			},
@@ -552,13 +531,9 @@ func Test_ReconcileStardogUser(t *testing.T) {
 				},
 				resource: createStardogUser(namespace, stardogUserName, stardogInstanceName, secretName, []string{}),
 			},
-			expectations: []func(stardogrestapi2.ExtendedBaseClientAPI){
-				func(stardogrestapi2.ExtendedBaseClientAPI) {
-					stardogClient.EXPECT().
-						SetConnection(gomock.Any(), gomock.Any(), gomock.Any())
-				},
-				func(stardogrestapi2.ExtendedBaseClientAPI) {
-					stardogClient.EXPECT().
+			expectations: []func(stardog_client.Stardog){
+				func(stardog_client.Stardog) {
+					stardogMocked.EXPECT().
 						RemoveUser(gomock.Any(), gomock.Any())
 				},
 			},
@@ -583,15 +558,11 @@ func Test_ReconcileStardogUser(t *testing.T) {
 				},
 				resource: createStardogUser(namespace, stardogUserName, stardogInstanceName, secretName, []string{}),
 			},
-			expectations: []func(stardogrestapi2.ExtendedBaseClientAPI){
-				func(stardogrestapi2.ExtendedBaseClientAPI) {
-					stardogClient.EXPECT().
-						SetConnection(gomock.Any(), gomock.Any(), gomock.Any())
-				},
-				func(stardogrestapi2.ExtendedBaseClientAPI) {
-					stardogClient.EXPECT().
+			expectations: []func(stardog_client.Stardog){
+				func(stardog_client.Stardog) {
+					stardogMocked.EXPECT().
 						RemoveUser(gomock.Any(), gomock.Any()).
-						Return(autorest.Response{}, errors.New("cannot delete user"))
+						Return(users.NewRemoveUserNoContent(), errors.New("cannot delete user"))
 				},
 			},
 			expectedResult: ctrl.Result{
@@ -656,24 +627,20 @@ func Test_ReconcileStardogUser(t *testing.T) {
 				},
 				resource: createStardogUser(namespace, stardogUserName, stardogInstanceName, secretName, []string{}),
 			},
-			expectations: []func(stardogrestapi2.ExtendedBaseClientAPI){
-				func(stardogrestapi2.ExtendedBaseClientAPI) {
-					stardogClient.EXPECT().
-						SetConnection(gomock.Any(), gomock.Any(), gomock.Any())
+			expectations: []func(stardog_client.Stardog){
+				func(stardog_client.Stardog) {
+					stardogMocked.EXPECT().
+						ListUsers(gomock.Any(), gomock.Any()).
+						Return(&users.ListUsersOK{Payload: &models.Users{Users: []string{}}}, nil)
 				},
-				func(stardogrestapi2.ExtendedBaseClientAPI) {
-					stardogClient.EXPECT().
-						ListUsers(gomock.Any()).
-						Return(stardogrest.Users{Users: &[]string{}}, nil)
-				},
-				func(stardogrestapi2.ExtendedBaseClientAPI) {
-					stardogClient.EXPECT().
+				func(stardog_client.Stardog) {
+					stardogMocked.EXPECT().
 						CreateUser(gomock.Any(), gomock.Any())
 				},
-				func(stardogrestapi2.ExtendedBaseClientAPI) {
-					stardogClient.EXPECT().
+				func(stardog_client.Stardog) {
+					stardogMocked.EXPECT().
 						ListUserRoles(gomock.Any(), gomock.Any()).
-						Return(stardogrest.Roles{Roles: &[]string{}}, nil)
+						Return(&users_roles.ListUserRolesOK{Payload: &models.Roles{Roles: []string{}}}, nil)
 				},
 			},
 			expectedResult: ctrl.Result{
@@ -697,24 +664,20 @@ func Test_ReconcileStardogUser(t *testing.T) {
 				},
 				resource: createStardogUser(namespace, stardogUserName, stardogInstanceName, secretName, []string{}),
 			},
-			expectations: []func(stardogrestapi2.ExtendedBaseClientAPI){
-				func(stardogrestapi2.ExtendedBaseClientAPI) {
-					stardogClient.EXPECT().
-						SetConnection(gomock.Any(), gomock.Any(), gomock.Any())
+			expectations: []func(stardog_client.Stardog){
+				func(stardog_client.Stardog) {
+					stardogMocked.EXPECT().
+						ListUsers(gomock.Any(), gomock.Any()).
+						Return(&users.ListUsersOK{Payload: &models.Users{Users: []string{}}}, nil)
 				},
-				func(stardogrestapi2.ExtendedBaseClientAPI) {
-					stardogClient.EXPECT().
-						ListUsers(gomock.Any()).
-						Return(stardogrest.Users{Users: &[]string{}}, nil)
-				},
-				func(stardogrestapi2.ExtendedBaseClientAPI) {
-					stardogClient.EXPECT().
+				func(stardog_client.Stardog) {
+					stardogMocked.EXPECT().
 						CreateUser(gomock.Any(), gomock.Any())
 				},
-				func(stardogrestapi2.ExtendedBaseClientAPI) {
-					stardogClient.EXPECT().
+				func(stardog_client.Stardog) {
+					stardogMocked.EXPECT().
 						ListUserRoles(gomock.Any(), gomock.Any()).
-						Return(stardogrest.Roles{Roles: &[]string{}}, nil)
+						Return(&users_roles.ListUserRolesOK{Payload: &models.Roles{Roles: []string{}}}, nil)
 				},
 			},
 			expectedResult: ctrl.Result{
@@ -744,8 +707,9 @@ func Test_ReconcileStardogUser(t *testing.T) {
 				resource: &tt.stardogUser,
 			}
 			for _, addExpectation := range tt.expectations {
-				addExpectation(tt.sur.reconciliationContext.stardogClient)
+				addExpectation(*tt.sur.reconciliationContext.stardogClient)
 			}
+			stardogMocked.EXPECT().SetTransport(gomock.Any()).AnyTimes()
 
 			result, err := r.ReconcileStardogUser(sur)
 

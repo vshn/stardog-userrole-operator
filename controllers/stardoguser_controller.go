@@ -3,9 +3,12 @@ package controllers
 import (
 	"context"
 	"fmt"
+	stardog "github.com/vshn/stardog-userrole-operator/stardogrest/client"
+	model_users "github.com/vshn/stardog-userrole-operator/stardogrest/client/users"
+	"github.com/vshn/stardog-userrole-operator/stardogrest/client/users_roles"
+	"github.com/vshn/stardog-userrole-operator/stardogrest/models"
 	"time"
 
-	"github.com/vshn/stardog-userrole-operator/stardogrest"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/errors"
@@ -51,8 +54,8 @@ func (r *StardogUserReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		reconciliationContext: &ReconciliationContext{
 			context:       ctx,
 			conditions:    make(map[StardogConditionType]StardogCondition),
-			stardogClient: stardogrest.NewExtendedBaseClient(),
 			namespace:     namespace.Namespace,
+			stardogClient: stardog.NewHTTPClient(nil),
 		},
 		resource: stardogUser,
 	}
@@ -127,12 +130,11 @@ func (r *StardogUserReconciler) deleteStardogUser(sur *StardogUserReconciliation
 
 func (r *StardogUserReconciler) finalize(sur *StardogUserReconciliation) error {
 	rc := sur.reconciliationContext
-	ctx := rc.context
 	spec := sur.resource.Spec
 	namespace := rc.namespace
 
 	r.Log.V(1).Info("setup Stardog Client from ", "ref", spec.StardogInstanceRef)
-	err := rc.initStardogClientFromRef(r.Client, spec.StardogInstanceRef)
+	auth, err := rc.initStardogClientFromRef(r.Client, spec.StardogInstanceRef)
 	if err != nil {
 		return err
 	}
@@ -143,7 +145,7 @@ func (r *StardogUserReconciler) finalize(sur *StardogUserReconciliation) error {
 		return err
 	}
 
-	_, err = rc.stardogClient.RemoveUser(ctx, username)
+	_, err = rc.stardogClient.Users.RemoveUser(model_users.NewRemoveUserParams().WithUser(username), auth)
 	if err != nil {
 		return fmt.Errorf("cannot remove Stardog user %s/%s: %v", namespace, username, err)
 	}
@@ -165,59 +167,61 @@ func (r *StardogUserReconciler) syncUser(sur *StardogUserReconciliation) error {
 	rc := sur.reconciliationContext
 	spec := sur.resource.Spec
 	userCredentials := spec.Credentials
-	ctx := rc.context
 	namespace := rc.namespace
 
 	r.Log.V(1).Info("init Stardog Client from ", "ref", spec.StardogInstanceRef)
-	err := rc.initStardogClientFromRef(r.Client, spec.StardogInstanceRef)
+	auth, err := rc.initStardogClientFromRef(r.Client, spec.StardogInstanceRef)
 	if err != nil {
 		return err
 	}
 
 	r.Log.V(1).Info("retrieving user credentials from Secret", "secret", userCredentials.Namespace+"/"+userCredentials.SecretRef)
-	username, password, err := rc.getCredentials(r.Client, spec.Credentials, namespace)
+	username, password, err := rc.getCredentials(r.Client, userCredentials, namespace)
 	if err != nil {
 		return err
 	}
 
 	superuser := false
-	user := stardogrest.User{
+	user := &models.User{
 		Username:  &username,
-		Password:  &[]string{password},
+		Password:  []string{password},
 		Superuser: &superuser,
 	}
 	stardogClient := rc.stardogClient
-	usersObject, err := stardogClient.ListUsers(ctx)
+	usersObject, err := stardogClient.Users.ListUsers(nil, auth)
 	if err != nil {
 		return fmt.Errorf("cannot get current list of users in %s: %v", namespace, err)
 	}
 
-	users := *usersObject.Users
+	users := usersObject.Payload.Users
 	if len(users) > 0 && contains(users, username) {
 		r.Log.V(1).Info("user already exists", "username", username)
-		_, err := stardogClient.ChangePassword(ctx, username, stardogrest.Password{Password: &password})
+		params := model_users.NewChangePasswordParams().WithUser(username).WithPassword(&models.Password{Password: &password})
+		_, err := stardogClient.Users.ChangePassword(params, auth)
 		if err != nil {
 			return fmt.Errorf("cannot change password for %s/%s: %v", namespace, *user.Username, err)
 		}
 	} else {
 		r.Log.V(1).Info("creating user", "username", username)
-		_, err = stardogClient.CreateUser(ctx, &user)
+		_, err = stardogClient.Users.CreateUser(model_users.NewCreateUserParams().WithUser(user), auth)
 		if err != nil {
 			return fmt.Errorf("cannot create user in %s/%s: %v", namespace, *user.Username, err)
 		}
 	}
 
-	rolesObject, err := stardogClient.ListUserRoles(ctx, username)
+	users_roles.NewListUserRolesParams().WithUser(username)
+	rolesObject, err := stardogClient.UsersRoles.ListUserRoles(users_roles.NewListUserRolesParams().WithUser(username), auth)
 	if err != nil {
 		return fmt.Errorf("cannot get list of roles from %s/%s: %v", namespace, *user.Username, err)
 	}
 
 	var roleErrors []error
 	roles := spec.Roles
-	existingRoles := *rolesObject.Roles
+	existingRoles := rolesObject.Payload.Roles
 	for _, role := range roles {
 		if !contains(existingRoles, role) {
-			_, err := stardogClient.AddRole(ctx, *user.Username, stardogrest.Rolename{Rolename: &role})
+			params := users_roles.NewAddRoleParams().WithUser(*user.Username).WithRole(&models.Rolename{Rolename: &role})
+			_, err := stardogClient.UsersRoles.AddRole(params, auth)
 			if err != nil {
 				roleErrors = append(roleErrors, err)
 			}
@@ -226,7 +230,8 @@ func (r *StardogUserReconciler) syncUser(sur *StardogUserReconciliation) error {
 
 	for _, existingRole := range existingRoles {
 		if !contains(roles, existingRole) {
-			_, err := stardogClient.RemoveRole(ctx, *user.Username, existingRole)
+			params := users_roles.NewRemoveRoleOfUserParams().WithUser(username).WithRole(existingRole)
+			_, err := stardogClient.UsersRoles.RemoveRoleOfUser(params, auth)
 			if err != nil {
 				roleErrors = append(roleErrors, err)
 			}

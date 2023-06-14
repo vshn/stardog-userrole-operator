@@ -2,6 +2,8 @@ package controllers
 
 import (
 	"context"
+	stardog_client "github.com/vshn/stardog-userrole-operator/stardogrest/client"
+	stardogmock "github.com/vshn/stardog-userrole-operator/stardogrest/mocks"
 	"path/filepath"
 	"testing"
 
@@ -100,3 +102,15 @@ var _ = AfterSuite(func() {
 	err := testEnv.Stop()
 	Expect(err).ToNot(HaveOccurred())
 })
+
+func createStardogClientFromMock(mockedClient *stardogmock.MockStardogTestClient) *stardog_client.Stardog {
+	return &stardog_client.Stardog{
+		Db:               mockedClient,
+		Roles:            mockedClient,
+		RolesPermissions: mockedClient,
+		Users:            mockedClient,
+		UsersPermissions: mockedClient,
+		UsersRoles:       mockedClient,
+		Transport:        mockedClient,
+	}
+}

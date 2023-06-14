@@ -3,9 +3,13 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"github.com/go-openapi/runtime"
+	auth "github.com/go-openapi/runtime/client"
+	httptransport "github.com/go-openapi/runtime/client"
+	stardog "github.com/vshn/stardog-userrole-operator/stardogrest/client"
+	"net/url"
 
 	. "github.com/vshn/stardog-userrole-operator/api/v1alpha1"
-	"github.com/vshn/stardog-userrole-operator/stardogrest/stardogrestapi"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -14,7 +18,7 @@ import (
 type ReconciliationContext struct {
 	context       context.Context
 	conditions    map[StardogConditionType]StardogCondition
-	stardogClient stardogrestapi.ExtendedBaseClientAPI
+	stardogClient *stardog.Stardog
 	namespace     string
 }
 
@@ -47,21 +51,30 @@ func (rc *ReconciliationContext) SetStatusIfExisting(conditionType StardogCondit
 	}
 }
 
-func (rc *ReconciliationContext) initStardogClientFromRef(kubeClient client.Client, stardogInstanceRef string) error {
+func (rc *ReconciliationContext) initStardogClient(kubeClient client.Client, stardogInstance StardogInstance) (runtime.ClientAuthInfoWriter, error) {
+	adminCredentials := stardogInstance.Spec.AdminCredentials
+	serverUrl := stardogInstance.Spec.ServerUrl
+	adminUsername, adminPassword, err := rc.getCredentials(kubeClient, adminCredentials, rc.namespace)
+	if err != nil {
+		return nil, err
+	}
+
+	u, err := url.Parse(serverUrl)
+	if err != nil || u.Host == "" {
+		return nil, fmt.Errorf("invalid url from stardoginstance %s: %s", stardogInstance.Name, serverUrl)
+	}
+
+	rc.stardogClient.SetTransport(httptransport.New(u.Host, stardog.DefaultBasePath, stardog.DefaultSchemes))
+	return auth.BasicAuth(adminUsername, adminPassword), nil
+}
+
+func (rc *ReconciliationContext) initStardogClientFromRef(kubeClient client.Client, stardogInstanceRef string) (runtime.ClientAuthInfoWriter, error) {
 	stardogInstance := &StardogInstance{}
 	err := kubeClient.Get(rc.context, types.NamespacedName{Namespace: rc.namespace, Name: stardogInstanceRef}, stardogInstance)
 	if err != nil {
-		return fmt.Errorf("cannot retrieve stardogInstanceRef %s/%s: %v", rc.namespace, stardogInstanceRef, err)
+		return nil, fmt.Errorf("cannot retrieve stardogInstanceRef %s/%s: %v", rc.namespace, stardogInstanceRef, err)
 	}
-
-	adminCredentials := stardogInstance.Spec.AdminCredentials
-	adminUsername, adminPassword, err := rc.getCredentials(kubeClient, adminCredentials, rc.namespace)
-	if err != nil {
-		return err
-	}
-
-	rc.stardogClient.SetConnection(stardogInstance.Spec.ServerUrl, adminUsername, adminPassword)
-	return nil
+	return rc.initStardogClient(kubeClient, *stardogInstance)
 }
 
 func (rc *ReconciliationContext) getCredentials(kubeClient client.Client, credentials StardogUserCredentialsSpec, alternativeNamespace string) (username, password string, err error) {

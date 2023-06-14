@@ -3,6 +3,8 @@ package controllers
 import (
 	"context"
 	"fmt"
+	stardog "github.com/vshn/stardog-userrole-operator/stardogrest/client"
+	"github.com/vshn/stardog-userrole-operator/stardogrest/client/users"
 	"net/url"
 	"time"
 
@@ -17,7 +19,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	. "github.com/vshn/stardog-userrole-operator/api/v1alpha1"
-	"github.com/vshn/stardog-userrole-operator/stardogrest"
 )
 
 // StardogInstanceReconciler reconciles a StardogInstance object
@@ -53,7 +54,7 @@ func (r *StardogInstanceReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 			context:       ctx,
 			conditions:    make(map[StardogConditionType]StardogCondition),
 			namespace:     namespace.Namespace,
-			stardogClient: stardogrest.NewExtendedBaseClient(),
+			stardogClient: stardog.NewHTTPClient(nil),
 		},
 		resource: stardogInstance,
 	}
@@ -107,15 +108,6 @@ func (r *StardogInstanceReconciler) ReconcileStardogInstance(sir *StardogInstanc
 func (r *StardogInstanceReconciler) deleteStardogInstance(sir *StardogInstanceReconciliation) error {
 	stardogInstance := sir.resource
 	rc := sir.reconciliationContext
-	credentials := sir.resource.Spec.AdminCredentials
-
-	r.Log.V(1).Info("retrieving admin credentials from Secret", "secret", credentials.Namespace+"/"+credentials.SecretRef)
-	username, password, err := rc.getCredentials(r.Client, credentials, rc.namespace)
-	if err != nil {
-		return err
-	}
-	stardogClient := rc.stardogClient
-	stardogClient.SetConnection(sir.resource.Spec.ServerUrl, username, password)
 
 	if contains(stardogInstance.GetFinalizers(), instanceUserFinalizer) {
 		if err := r.userFinalizer(sir); err != nil {
@@ -194,17 +186,15 @@ func (r *StardogInstanceReconciler) validateConnection(sir *StardogInstanceRecon
 	r.Log.Info(fmt.Sprintf("verifying connection to Stardog API %s", sir.resource.Spec.ServerUrl))
 	rc := sir.reconciliationContext
 	spec := sir.resource.Spec
-	ctx := rc.context
 	credentials := spec.AdminCredentials
-	stardogClient := rc.stardogClient
 
 	r.Log.V(1).Info("retrieving admin credentials from Secret", "secret", credentials.Namespace+"/"+credentials.SecretRef)
-	username, password, err := rc.getCredentials(r.Client, credentials, rc.namespace)
+	auth, err := rc.initStardogClient(r.Client, *sir.resource)
 	if err != nil {
 		return err
 	}
-	stardogClient.SetConnection(spec.ServerUrl, username, password)
-	_, err = stardogClient.IsEnabled(ctx, username)
+
+	_, err = rc.stardogClient.Users.IsEnabled(users.NewIsEnabledParams().WithUser("admin"), auth)
 	if err != nil {
 		return err
 	}
