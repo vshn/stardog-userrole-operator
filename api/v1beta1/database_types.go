@@ -23,7 +23,10 @@ type DatabaseSpec struct {
 
 // DatabaseStatus defines the observed state of the Database
 type DatabaseStatus struct {
-	Conditions []v1alpha1.StardogCondition `json:"conditions,omitempty"`
+	DatabaseName       string                      `json:"databaseName,omitempty"`
+	Options            string                      `json:"options,omitempty"`
+	StardogInstanceRef string                      `json:"stardogInstanceRef,omitempty"`
+	Conditions         []v1alpha1.StardogCondition `json:"conditions,omitempty"`
 }
 
 //+kubebuilder:object:root=true

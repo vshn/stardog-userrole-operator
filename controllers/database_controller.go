@@ -85,6 +85,48 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	return r.ReconcileDatabase(dr)
 }
 
+func (r *DatabaseReconciler) ReconcileDatabase(dr *DatabaseReconciliation) (ctrl.Result, error) {
+	rc := dr.reconciliationContext
+	database := dr.resource
+
+	r.Log.Info("reconciling", getLoggingKeysAndValuesForDatabase(database)...)
+
+	isStardogDatabaseMarkedToBeDeleted := database.GetDeletionTimestamp() != nil
+	if isStardogDatabaseMarkedToBeDeleted {
+		if err := r.deleteDatabase(dr); err != nil {
+			rc.SetStatusCondition(createStatusConditionTerminating(err))
+			rc.SetStatusCondition(createStatusConditionReady(false, "StardogDatabase cannot be deleted"))
+			return ctrl.Result{Requeue: true, RequeueAfter: ReconFreqErr}, r.updateStatus(dr)
+		}
+		return ctrl.Result{Requeue: false}, nil
+	}
+
+	if err := r.validateSpecification(dr.reconciliationContext.context, dr.resource); err != nil {
+		rc.SetStatusCondition(createStatusConditionInvalid(err))
+		rc.SetStatusCondition(createStatusConditionReady(false, "Specification cannot be validated"))
+		return ctrl.Result{Requeue: false}, r.updateStatus(dr)
+	}
+	rc.SetStatusIfExisting(v1alpha1.StardogInvalid, v1.ConditionFalse)
+
+	if err := r.syncDB(dr); err != nil {
+		rc.SetStatusCondition(createStatusConditionErrored(err))
+		rc.SetStatusCondition(createStatusConditionReady(false, "Synchronization failed"))
+		return ctrl.Result{Requeue: true, RequeueAfter: ReconFreqErr}, r.updateStatus(dr)
+	}
+	rc.SetStatusIfExisting(v1alpha1.StardogErrored, v1.ConditionFalse)
+
+	r.Log.V(1).Info("adding Finalizer for the StardogDatabase")
+	controllerutil.AddFinalizer(dr.resource, databaseFinalizer)
+
+	if err := r.Update(dr.reconciliationContext.context, dr.resource); err != nil {
+		rc.SetStatusCondition(createStatusConditionErrored(err))
+		rc.SetStatusCondition(createStatusConditionReady(false, "Cannot update database"))
+		return ctrl.Result{Requeue: true, RequeueAfter: ReconFreqErr}, r.updateStatus(dr)
+	}
+	rc.SetStatusCondition(createStatusConditionReady(true, "Synchronized"))
+	return ctrl.Result{Requeue: true, RequeueAfter: ReconFreq}, r.updateStatus(dr)
+}
+
 func (r *DatabaseReconciler) updateStatus(dr *DatabaseReconciliation) error {
 	res := dr.resource
 	status := res.Status
@@ -92,6 +134,7 @@ func (r *DatabaseReconciler) updateStatus(dr *DatabaseReconciliation) error {
 	// our own.
 	status.Conditions = mergeWithExistingConditions(status.Conditions, dr.reconciliationContext.conditions)
 	res.Status = status
+
 	err := r.Client.Status().Update(dr.reconciliationContext.context, res)
 	if err != nil {
 		r.Log.Error(err, "could not update Database", getLoggingKeysAndValuesForDatabase(res)...)
@@ -206,9 +249,11 @@ func (r *DatabaseReconciler) finalize(dr *DatabaseReconciliation) error {
 	return nil
 }
 
-func (r *DatabaseReconciler) validateSpecification(database *stardogv1beta1.Database) error {
+func (r *DatabaseReconciler) validateSpecification(ctx context.Context, database *stardogv1beta1.Database) error {
 	r.Log.V(1).Info("validating StardogRoleSpec")
-	spec := database.Spec
+	spec := &database.Spec
+	status := &database.Status
+
 	if spec.StardogInstanceRef == "" {
 		return fmt.Errorf(".spec.StardogInstanceRef is required")
 	}
@@ -218,6 +263,27 @@ func (r *DatabaseReconciler) validateSpecification(database *stardogv1beta1.Data
 	if spec.NamedGraphPrefix == "" {
 		return fmt.Errorf(".spec.NamedGraphPrefix is required")
 	}
+
+	// If status is not set for database name then we treat it as a creation (first object reconciliation)
+	if status.DatabaseName == "" {
+		status.StardogInstanceRef = spec.StardogInstanceRef
+		status.DatabaseName = spec.DatabaseName
+		status.Options = spec.Options
+
+		err := r.Client.Status().Update(ctx, database)
+		if err != nil {
+			r.Log.Error(err, "could not update Database Status", getLoggingKeysAndValuesForDatabase(database)...)
+			return err
+		}
+	}
+
+	// If status is set for database name then we treat it as an update (2 - n object reconciliation)
+	if status.DatabaseName != "" {
+		spec.DatabaseName = status.DatabaseName
+		spec.StardogInstanceRef = status.StardogInstanceRef
+		spec.Options = status.Options
+	}
+
 	return nil
 }
 
@@ -350,48 +416,6 @@ func getWritePermissions(database *stardogv1beta1.Database) []models.Permission 
 		},
 	}
 	return writePerms
-}
-
-func (r *DatabaseReconciler) ReconcileDatabase(dr *DatabaseReconciliation) (ctrl.Result, error) {
-	rc := dr.reconciliationContext
-	database := dr.resource
-
-	r.Log.Info("reconciling", getLoggingKeysAndValuesForDatabase(database)...)
-
-	isStardogDatabaseMarkedToBeDeleted := database.GetDeletionTimestamp() != nil
-	if isStardogDatabaseMarkedToBeDeleted {
-		if err := r.deleteDatabase(dr); err != nil {
-			rc.SetStatusCondition(createStatusConditionTerminating(err))
-			rc.SetStatusCondition(createStatusConditionReady(false, "StardogDatabase cannot be deleted"))
-			return ctrl.Result{Requeue: true, RequeueAfter: ReconFreqErr}, r.updateStatus(dr)
-		}
-		return ctrl.Result{Requeue: false}, nil
-	}
-
-	if err := r.validateSpecification(database); err != nil {
-		rc.SetStatusCondition(createStatusConditionInvalid(err))
-		rc.SetStatusCondition(createStatusConditionReady(false, "Specification cannot be validated"))
-		return ctrl.Result{Requeue: false}, r.updateStatus(dr)
-	}
-	rc.SetStatusIfExisting(v1alpha1.StardogInvalid, v1.ConditionFalse)
-
-	if err := r.syncDB(dr); err != nil {
-		rc.SetStatusCondition(createStatusConditionErrored(err))
-		rc.SetStatusCondition(createStatusConditionReady(false, "Synchronization failed"))
-		return ctrl.Result{Requeue: true, RequeueAfter: ReconFreqErr}, r.updateStatus(dr)
-	}
-	rc.SetStatusIfExisting(v1alpha1.StardogErrored, v1.ConditionFalse)
-
-	r.Log.V(1).Info("adding Finalizer for the StardogDatabase")
-	controllerutil.AddFinalizer(dr.resource, databaseFinalizer)
-
-	if err := r.Update(dr.reconciliationContext.context, dr.resource); err != nil {
-		rc.SetStatusCondition(createStatusConditionErrored(err))
-		rc.SetStatusCondition(createStatusConditionReady(false, "Cannot update database"))
-		return ctrl.Result{Requeue: true, RequeueAfter: ReconFreqErr}, r.updateStatus(dr)
-	}
-	rc.SetStatusCondition(createStatusConditionReady(true, "Synchronized"))
-	return ctrl.Result{Requeue: true, RequeueAfter: ReconFreq}, r.updateStatus(dr)
 }
 
 // SetupWithManager sets up the controller with the Manager.
