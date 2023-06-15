@@ -7,12 +7,12 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/go-openapi/runtime"
 	"github.com/sethvargo/go-password/password"
-	"github.com/vshn/stardog-userrole-operator/api/v1alpha1"
+
 	stardog "github.com/vshn/stardog-userrole-operator/stardogrest/client"
 	"github.com/vshn/stardog-userrole-operator/stardogrest/client/db"
-	roles2 "github.com/vshn/stardog-userrole-operator/stardogrest/client/roles"
+	"github.com/vshn/stardog-userrole-operator/stardogrest/client/roles"
 	"github.com/vshn/stardog-userrole-operator/stardogrest/client/roles_permissions"
-	users2 "github.com/vshn/stardog-userrole-operator/stardogrest/client/users"
+	"github.com/vshn/stardog-userrole-operator/stardogrest/client/users"
 	"github.com/vshn/stardog-userrole-operator/stardogrest/client/users_roles"
 	"github.com/vshn/stardog-userrole-operator/stardogrest/models"
 	"k8s.io/api/core/v1"
@@ -25,10 +25,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
+	stardogv1alpha1 "github.com/vshn/stardog-userrole-operator/api/v1alpha1"
 	stardogv1beta1 "github.com/vshn/stardog-userrole-operator/api/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
-	types "k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 const databaseFinalizer = "finalizer.stardog.databases"
@@ -49,7 +50,6 @@ type stardogDatabaseCreate struct {
 
 // DatabaseReconciler reconciles a Database object
 type DatabaseReconciler struct {
-	reconciliationContext *ReconciliationContext
 	client.Client
 	Log    logr.Logger
 	Scheme *scheme.Scheme
@@ -60,32 +60,30 @@ type DatabaseReconciler struct {
 
 // Reconcile manages the Stardog resources for a Database object
 func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	namespace := req.NamespacedName
 	database := &stardogv1beta1.Database{}
 	err := r.Get(ctx, req.NamespacedName, database)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			r.Log.Info("Database not found, ignoring reconcile.", "Namespace", namespace)
+			r.Log.Info("Database not found, ignoring reconcile.")
 			return ctrl.Result{Requeue: false}, nil
 		}
-		r.Log.Error(err, "could not retrieve Database.", "Namespace", namespace)
+		r.Log.Error(err, "Could not retrieve Database.")
 		return ctrl.Result{Requeue: true, RequeueAfter: ReconFreqErr}, err
 	}
 
 	dr := &DatabaseReconciliation{
 		reconciliationContext: &ReconciliationContext{
 			context:       ctx,
-			conditions:    make(map[v1alpha1.StardogConditionType]v1alpha1.StardogCondition),
-			namespace:     namespace.Namespace,
+			conditions:    make(map[stardogv1alpha1.StardogConditionType]stardogv1alpha1.StardogCondition),
 			stardogClient: stardog.NewHTTPClient(nil),
 		},
 		resource: database,
 	}
 
-	return r.ReconcileDatabase(dr)
+	return r.reconcileDatabase(dr)
 }
 
-func (r *DatabaseReconciler) ReconcileDatabase(dr *DatabaseReconciliation) (ctrl.Result, error) {
+func (r *DatabaseReconciler) reconcileDatabase(dr *DatabaseReconciliation) (ctrl.Result, error) {
 	rc := dr.reconciliationContext
 	database := dr.resource
 
@@ -93,7 +91,7 @@ func (r *DatabaseReconciler) ReconcileDatabase(dr *DatabaseReconciliation) (ctrl
 
 	isStardogDatabaseMarkedToBeDeleted := database.GetDeletionTimestamp() != nil
 	if isStardogDatabaseMarkedToBeDeleted {
-		if err := r.deleteDatabase(dr); err != nil {
+		if err := r.deleteDatabases(dr); err != nil {
 			rc.SetStatusCondition(createStatusConditionTerminating(err))
 			rc.SetStatusCondition(createStatusConditionReady(false, "StardogDatabase cannot be deleted"))
 			return ctrl.Result{Requeue: true, RequeueAfter: ReconFreqErr}, r.updateStatus(dr)
@@ -106,14 +104,14 @@ func (r *DatabaseReconciler) ReconcileDatabase(dr *DatabaseReconciliation) (ctrl
 		rc.SetStatusCondition(createStatusConditionReady(false, "Specification cannot be validated"))
 		return ctrl.Result{Requeue: false}, r.updateStatus(dr)
 	}
-	rc.SetStatusIfExisting(v1alpha1.StardogInvalid, v1.ConditionFalse)
+	rc.SetStatusIfExisting(stardogv1alpha1.StardogInvalid, v1.ConditionFalse)
 
 	if err := r.syncDB(dr); err != nil {
 		rc.SetStatusCondition(createStatusConditionErrored(err))
 		rc.SetStatusCondition(createStatusConditionReady(false, "Synchronization failed"))
 		return ctrl.Result{Requeue: true, RequeueAfter: ReconFreqErr}, r.updateStatus(dr)
 	}
-	rc.SetStatusIfExisting(v1alpha1.StardogErrored, v1.ConditionFalse)
+	rc.SetStatusIfExisting(stardogv1alpha1.StardogErrored, v1.ConditionFalse)
 
 	r.Log.V(1).Info("adding Finalizer for the StardogDatabase")
 	controllerutil.AddFinalizer(dr.resource, databaseFinalizer)
@@ -123,6 +121,7 @@ func (r *DatabaseReconciler) ReconcileDatabase(dr *DatabaseReconciliation) (ctrl
 		rc.SetStatusCondition(createStatusConditionReady(false, "Cannot update database"))
 		return ctrl.Result{Requeue: true, RequeueAfter: ReconFreqErr}, r.updateStatus(dr)
 	}
+
 	rc.SetStatusCondition(createStatusConditionReady(true, "Synchronized"))
 	return ctrl.Result{Requeue: true, RequeueAfter: ReconFreq}, r.updateStatus(dr)
 }
@@ -144,16 +143,25 @@ func (r *DatabaseReconciler) updateStatus(dr *DatabaseReconciliation) error {
 	return nil
 }
 
-func (r *DatabaseReconciler) deleteDatabase(dr *DatabaseReconciliation) error {
-	instances := dr.resource.Spec.StardogInstanceRef
+func (r *DatabaseReconciler) deleteDatabases(dr *DatabaseReconciliation) error {
+	instances := dr.resource.Spec.StardogInstanceRefs
+	database := dr.resource
 	r.Log.Info(fmt.Sprintf("checking if Stardog Database %s is deletable for each instance %s", dr.resource.Name, instances))
 
-	db := dr.resource
-	if err := r.finalize(dr); err != nil {
-		return fmt.Errorf("cannot delete stardog database: %v", err)
+	for _, instance := range instances {
+		if err := r.deleteDatabase(dr, instance); err != nil {
+			return fmt.Errorf("cannot delete stardog database: %v", err)
+		}
+
+		database.Spec.StardogInstanceRefs = removeIndex(database.Spec.StardogInstanceRefs, instance)
+		err := r.Update(dr.reconciliationContext.context, database)
+		if err != nil {
+			return fmt.Errorf("cannot update Database CRD: %v", err)
+		}
 	}
-	controllerutil.RemoveFinalizer(db, databaseFinalizer)
-	err := r.Update(dr.reconciliationContext.context, db)
+
+	controllerutil.RemoveFinalizer(database, databaseFinalizer)
+	err := r.Update(dr.reconciliationContext.context, database)
 	if err != nil {
 		return fmt.Errorf("cannot update Database CRD: %v", err)
 	}
@@ -161,11 +169,11 @@ func (r *DatabaseReconciler) deleteDatabase(dr *DatabaseReconciliation) error {
 	return nil
 }
 
-func (r *DatabaseReconciler) finalize(dr *DatabaseReconciliation) error {
+func (r *DatabaseReconciler) deleteDatabase(dr *DatabaseReconciliation, instance stardogv1beta1.StardogInstanceRef) error {
 	database := dr.resource
 
-	r.Log.V(1).Info("setup Stardog Client from ", "ref", database.Spec.StardogInstanceRef)
-	auth, err := dr.reconciliationContext.initStardogClientFromRef(r.Client, database.Spec.StardogInstanceRef)
+	r.Log.V(1).Info("setup Stardog Client from ", "ref", instance)
+	auth, err := dr.reconciliationContext.initStardogClientFromRef(r.Client, instance)
 	if err != nil {
 		return err
 	}
@@ -218,7 +226,7 @@ func (r *DatabaseReconciler) finalize(dr *DatabaseReconciliation) error {
 	}
 
 	// Remove read and write roles
-	roleParam := roles2.NewRemoveRoleParams()
+	roleParam := roles.NewRemoveRoleParams()
 	roleRead, err := stardogClient.Roles.RemoveRole(roleParam.WithRole(read), auth)
 	if err != nil || !roleRead.IsSuccess() {
 		return fmt.Errorf("cannot remove read role %s: %v", read, err)
@@ -229,7 +237,7 @@ func (r *DatabaseReconciler) finalize(dr *DatabaseReconciliation) error {
 	}
 
 	// Remove read and write users
-	userParam := users2.NewRemoveUserParams()
+	userParam := users.NewRemoveUserParams()
 	userRead, err := stardogClient.Users.RemoveUser(userParam.WithUser(read), auth)
 	if err != nil || !userRead.IsSuccess() {
 		return fmt.Errorf("cannot remove read user %s: %v", read, err)
@@ -243,7 +251,7 @@ func (r *DatabaseReconciler) finalize(dr *DatabaseReconciliation) error {
 	params := db.NewDropDatabaseParams().WithDb(database.Spec.DatabaseName)
 	dbResponse, err := stardogClient.Db.DropDatabase(params, auth)
 	if err != nil || !dbResponse.IsSuccess() {
-		return fmt.Errorf("error dropping database %s/%s: %w", database.Namespace, database.Name, err)
+		return fmt.Errorf("error dropping database %s: %w", database.Name, err)
 	}
 
 	return nil
@@ -254,8 +262,8 @@ func (r *DatabaseReconciler) validateSpecification(ctx context.Context, database
 	spec := &database.Spec
 	status := &database.Status
 
-	if spec.StardogInstanceRef == "" {
-		return fmt.Errorf(".spec.StardogInstanceRef is required")
+	if len(spec.StardogInstanceRefs) == 0 {
+		return fmt.Errorf(".spec.StardogInstanceRefs is required to have at least one instance")
 	}
 	if spec.DatabaseName == "" {
 		return fmt.Errorf(".spec.DatabaseName is required")
@@ -266,7 +274,8 @@ func (r *DatabaseReconciler) validateSpecification(ctx context.Context, database
 
 	// If status is not set for database name then we treat it as a creation (first object reconciliation)
 	if status.DatabaseName == "" {
-		status.StardogInstanceRef = spec.StardogInstanceRef
+		status.NamedGraphPrefix = spec.NamedGraphPrefix
+		status.StardogInstanceRefs = spec.StardogInstanceRefs
 		status.DatabaseName = spec.DatabaseName
 		status.Options = spec.Options
 
@@ -279,8 +288,9 @@ func (r *DatabaseReconciler) validateSpecification(ctx context.Context, database
 
 	// If status is set for database name then we treat it as an update (2 - n object reconciliation)
 	if status.DatabaseName != "" {
+		spec.NamedGraphPrefix = status.NamedGraphPrefix
 		spec.DatabaseName = status.DatabaseName
-		spec.StardogInstanceRef = status.StardogInstanceRef
+		spec.StardogInstanceRefs = status.StardogInstanceRefs
 		spec.Options = status.Options
 	}
 
@@ -289,133 +299,122 @@ func (r *DatabaseReconciler) validateSpecification(ctx context.Context, database
 
 func (r *DatabaseReconciler) syncDB(dr *DatabaseReconciliation) error {
 	rc := dr.reconciliationContext
-	ctx := dr.reconciliationContext.context
 	database := dr.resource
 	stardogClient := dr.reconciliationContext.stardogClient
-	auth, err := rc.initStardogClientFromRef(r.Client, database.Spec.StardogInstanceRef)
 
-	// Generate and save credentials in k8s
-	secretName := getUsersCredentialSecret(database.Spec.DatabaseName, database.Spec.StardogInstanceRef)
-	readName, writeName := getUserRoleNames(database.Spec.DatabaseName)
-	credDBSecret, err := r.createCredentials(ctx, database, secretName, readName, writeName)
-	if err != nil {
-		return err
-	}
-
-	// Create database in Stardog if it does not exist
-	liveDatabases, err := stardogClient.Db.ListDatabases(nil, auth)
-	if err != nil {
-		r.Log.Error(err, "error listing databases")
-		return err
-	}
-
-	if !slices.Contains(liveDatabases.Payload.Databases, database.Spec.DatabaseName) {
-		err = createDatabase(database, stardogClient, auth)
+	for _, instance := range database.Spec.StardogInstanceRefs {
+		auth, err := rc.initStardogClientFromRef(r.Client, instance)
 		if err != nil {
-			return fmt.Errorf("failed to create database %v", err)
+			return fmt.Errorf("cannot initialize stardog client: %v", err)
 		}
-		r.Log.Info("created Stardog database", "name", database.Spec.DatabaseName)
-	}
 
-	// create default read and write users
-	users := []models.User{
-		{Password: []string{string(credDBSecret.Data[readName])}, Username: &readName},
-		{Password: []string{string(credDBSecret.Data[writeName])}, Username: &writeName},
-	}
-	err = createDefaultUsersForDB(stardogClient, auth, users)
-	if err != nil {
-		r.Log.Error(err, "error creating users", "users", users)
-		return err
-	}
-
-	// create default read and write roles
-	roles := []models.Rolename{
-		{Rolename: &readName},
-		{Rolename: &writeName},
-	}
-	err = createDefaultRolesForDB(stardogClient, auth, roles)
-	if err != nil {
-		r.Log.Error(err, "error creating roles", "roles", roles)
-		return err
-	}
-
-	//create read and write permissions for user roles
-	readPerms := getReadPermissions(database)
-	err = createDefaultPermissions(stardogClient, auth, readName, readPerms)
-	if err != nil {
-		r.Log.Error(err, "adding permission to role failed", "role", readName, "permission", readPerms)
-		return err
-	}
-
-	writePerms := getWritePermissions(database)
-	err = createDefaultPermissions(stardogClient, auth, writeName, writePerms)
-	if err != nil {
-		r.Log.Error(err, "adding permission to role failed", "role", writeName, "permission", writePerms)
-		return err
-	}
-
-	// assign roles to users
-	readUserRolesResp, err := stardogClient.UsersRoles.ListUserRoles(users_roles.NewListUserRolesParams().WithUser(readName), auth)
-	if err != nil || !readUserRolesResp.IsSuccess() {
-		r.Log.Error(err, "error getting user roles", "user", readName)
-		return err
-	}
-
-	if !slices.Contains(readUserRolesResp.Payload.Roles, readName) {
-		params := users_roles.NewAddRoleParams().
-			WithUser(readName).
-			WithRole(&models.Rolename{Rolename: &readName})
-		roleResp, err := stardogClient.UsersRoles.AddRole(params, auth)
-		if err != nil || !roleResp.IsSuccess() {
-			r.Log.Error(err, "error assigning role to user", "user", readName, "role", readName)
+		// Generate and save credentials in k8s
+		secretName := getUsersCredentialSecret(database.Spec.DatabaseName, instance.Name)
+		readName, writeName := getUserRoleNames(database.Spec.DatabaseName)
+		credDBSecret, err := r.createCredentials(dr, secretName, readName, writeName)
+		if err != nil {
 			return err
 		}
-	}
 
-	writeUserRolesResp, err := stardogClient.UsersRoles.ListUserRoles(users_roles.NewListUserRolesParams().WithUser(writeName), auth)
-	if err != nil || !writeUserRolesResp.IsSuccess() {
-		r.Log.Error(err, "error getting user roles", "user", writeName)
-		return err
-	}
-
-	if !slices.Contains(writeUserRolesResp.Payload.Roles, readName) {
-		params := users_roles.NewAddRoleParams().
-			WithUser(writeName).
-			WithRole(&models.Rolename{Rolename: &readName})
-		roleResp, err := stardogClient.UsersRoles.AddRole(params, auth)
-		if err != nil || !roleResp.IsSuccess() {
-			r.Log.Error(err, "error assigning role to user", "user", writeName, "role", readName)
+		// Create database in Stardog if it does not exist
+		liveDatabases, err := stardogClient.Db.ListDatabases(nil, auth)
+		if err != nil {
+			r.Log.Error(err, "error listing databases")
 			return err
 		}
-	}
 
-	if !slices.Contains(writeUserRolesResp.Payload.Roles, writeName) {
-		params := users_roles.NewAddRoleParams().
-			WithUser(writeName).
-			WithRole(&models.Rolename{Rolename: &writeName})
-		roleResp, err := stardogClient.UsersRoles.AddRole(params, auth)
-		if err != nil || !roleResp.IsSuccess() {
-			r.Log.Error(err, "error assigning role to user", "user", writeName, "role", writeName)
+		if !slices.Contains(liveDatabases.Payload.Databases, database.Spec.DatabaseName) {
+			err = createDatabase(database, stardogClient, auth)
+			if err != nil {
+				return fmt.Errorf("failed to create database %v", err)
+			}
+			r.Log.Info("created Stardog database", "name", database.Spec.DatabaseName)
+		}
+
+		// create default read and write users
+		usrs := []models.User{
+			{Password: []string{string(credDBSecret.Data[readName])}, Username: &readName},
+			{Password: []string{string(credDBSecret.Data[writeName])}, Username: &writeName},
+		}
+		err = createDefaultUsersForDB(stardogClient, auth, usrs)
+		if err != nil {
+			r.Log.Error(err, "error creating users", "users", usrs)
 			return err
+		}
+
+		// create default read and write roles
+		rolenames := []models.Rolename{
+			{Rolename: &readName},
+			{Rolename: &writeName},
+		}
+		err = createDefaultRolesForDB(stardogClient, auth, rolenames)
+		if err != nil {
+			r.Log.Error(err, "error creating roles", "roles", rolenames)
+			return err
+		}
+
+		//create read and write permissions for user roles
+		readPerms := getReadPermissions(database)
+		err = createDefaultPermissions(stardogClient, auth, readName, readPerms)
+		if err != nil {
+			r.Log.Error(err, "adding permission to role failed", "role", readName, "permission", readPerms)
+			return err
+		}
+
+		writePerms := getWritePermissions(database)
+		err = createDefaultPermissions(stardogClient, auth, writeName, writePerms)
+		if err != nil {
+			r.Log.Error(err, "adding permission to role failed", "role", writeName, "permission", writePerms)
+			return err
+		}
+
+		// assign roles to users
+		readUserRolesResp, err := stardogClient.UsersRoles.ListUserRoles(users_roles.NewListUserRolesParams().WithUser(readName), auth)
+		if err != nil || !readUserRolesResp.IsSuccess() {
+			r.Log.Error(err, "error getting user roles", "user", readName)
+			return err
+		}
+
+		if !slices.Contains(readUserRolesResp.Payload.Roles, readName) {
+			params := users_roles.NewAddRoleParams().
+				WithUser(readName).
+				WithRole(&models.Rolename{Rolename: &readName})
+			roleResp, err := stardogClient.UsersRoles.AddRole(params, auth)
+			if err != nil || !roleResp.IsSuccess() {
+				r.Log.Error(err, "error assigning role to user", "user", readName, "role", readName)
+				return err
+			}
+		}
+
+		writeUserRolesResp, err := stardogClient.UsersRoles.ListUserRoles(users_roles.NewListUserRolesParams().WithUser(writeName), auth)
+		if err != nil || !writeUserRolesResp.IsSuccess() {
+			r.Log.Error(err, "error getting user roles", "user", writeName)
+			return err
+		}
+
+		if !slices.Contains(writeUserRolesResp.Payload.Roles, readName) {
+			params := users_roles.NewAddRoleParams().
+				WithUser(writeName).
+				WithRole(&models.Rolename{Rolename: &readName})
+			roleResp, err := stardogClient.UsersRoles.AddRole(params, auth)
+			if err != nil || !roleResp.IsSuccess() {
+				r.Log.Error(err, "error assigning role to user", "user", writeName, "role", readName)
+				return err
+			}
+		}
+
+		if !slices.Contains(writeUserRolesResp.Payload.Roles, writeName) {
+			params := users_roles.NewAddRoleParams().
+				WithUser(writeName).
+				WithRole(&models.Rolename{Rolename: &writeName})
+			roleResp, err := stardogClient.UsersRoles.AddRole(params, auth)
+			if err != nil || !roleResp.IsSuccess() {
+				r.Log.Error(err, "error assigning role to user", "user", writeName, "role", writeName)
+				return err
+			}
 		}
 	}
 	return nil
-}
-
-func getWritePermissions(database *stardogv1beta1.Database) []models.Permission {
-	writePerms := []models.Permission{
-		{
-			Action:       pointer.String("WRITE"),
-			Resource:     []string{database.Spec.DatabaseName},
-			ResourceType: pointer.String("db"),
-		},
-		{
-			Action:       pointer.String("WRITE"),
-			Resource:     []string{database.Spec.DatabaseName},
-			ResourceType: pointer.String("metadata"),
-		},
-	}
-	return writePerms
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -426,7 +425,9 @@ func (r *DatabaseReconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 // Generate and save credentials for Database
-func (r *DatabaseReconciler) createCredentials(ctx context.Context, database *stardogv1beta1.Database, secretName string, readName string, writeName string) (*corev1.Secret, error) {
+func (r *DatabaseReconciler) createCredentials(dr *DatabaseReconciliation, secretName string, readName string, writeName string) (*corev1.Secret, error) {
+	database := dr.resource
+	ctx := dr.reconciliationContext.context
 	secret := &corev1.Secret{}
 	err := r.Get(ctx, types.NamespacedName{Name: secretName, Namespace: database.Namespace}, secret)
 
@@ -440,7 +441,7 @@ func (r *DatabaseReconciler) createCredentials(ctx context.Context, database *st
 	secret = &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      secretName,
-			Namespace: database.Namespace,
+			Namespace: dr.reconciliationContext.namespace,
 		}}
 	err = controllerutil.SetControllerReference(database, secret, r.Scheme)
 	if err != nil {
@@ -465,13 +466,20 @@ func (r *DatabaseReconciler) createCredentials(ctx context.Context, database *st
 	secret.StringData[writeName] = writePassword
 
 	err = r.Create(ctx, secret)
+	if err != nil && apierrors.IsAlreadyExists(err) {
+		err = r.Get(ctx, types.NamespacedName{Name: secretName, Namespace: secret.Namespace}, secret)
+		if err != nil {
+			r.Log.Error(err, fmt.Sprintf("error creating secret %s/%s", database.Namespace, secretName))
+			return nil, fmt.Errorf("cannot get existing credentials from secret %s: %v", secretName, err)
+		}
+		return secret, nil
+	}
 	if err != nil {
 		r.Log.Error(err, fmt.Sprintf("error creating secret %s/%s", database.Namespace, secretName))
 		return nil, err
-	} else {
-		r.Log.Info("created credential secret", "namespace", secret.Namespace, "name", secret.Name)
 	}
 
+	r.Log.Info("created credential secret", "namespace", secret.Namespace, "name", secret.Name)
 	return secret, nil
 }
 
@@ -502,15 +510,15 @@ func createDatabase(database *stardogv1beta1.Database, stardogClient *stardog.St
 	return nil
 }
 
-func createDefaultUsersForDB(stardogClient *stardog.Stardog, auth runtime.ClientAuthInfoWriter, users []models.User) error {
+func createDefaultUsersForDB(stardogClient *stardog.Stardog, auth runtime.ClientAuthInfoWriter, usrs []models.User) error {
 	existingUsers, err := stardogClient.Users.ListUsers(nil, auth)
 	if err != nil || !existingUsers.IsSuccess() {
 		return fmt.Errorf("error listing users: %w", err)
 	}
 
-	for _, user := range users {
+	for _, user := range usrs {
 		if !slices.Contains(existingUsers.Payload.Users, *user.Username) {
-			createUserResp, err := stardogClient.Users.CreateUser(users2.NewCreateUserParams().WithUser(&user), auth)
+			createUserResp, err := stardogClient.Users.CreateUser(users.NewCreateUserParams().WithUser(&user), auth)
 			if err != nil || !createUserResp.IsSuccess() {
 				return fmt.Errorf("error create database user %s: %w", *user.Username, err)
 			}
@@ -538,21 +546,37 @@ func createDefaultPermissions(stardogClient *stardog.Stardog, auth runtime.Clien
 	return nil
 }
 
-func createDefaultRolesForDB(stardogClient *stardog.Stardog, auth runtime.ClientAuthInfoWriter, roles []models.Rolename) error {
+func createDefaultRolesForDB(stardogClient *stardog.Stardog, auth runtime.ClientAuthInfoWriter, rolenames []models.Rolename) error {
 	existingRoles, err := stardogClient.Roles.ListRoles(nil, auth)
 	if err != nil || !existingRoles.IsSuccess() {
 		return fmt.Errorf("error getting roles: %w", err)
 	}
 
-	for _, role := range roles {
+	for _, role := range rolenames {
 		if !slices.Contains(existingRoles.Payload.Roles, *role.Rolename) {
-			createRoleResp, err := stardogClient.Roles.CreateRole(roles2.NewCreateRoleParams().WithRole(&role), auth)
+			createRoleResp, err := stardogClient.Roles.CreateRole(roles.NewCreateRoleParams().WithRole(&role), auth)
 			if err != nil || !createRoleResp.IsSuccess() {
 				return fmt.Errorf("error creating role %s: %w", *role.Rolename, err)
 			}
 		}
 	}
 	return nil
+}
+
+func getWritePermissions(database *stardogv1beta1.Database) []models.Permission {
+	writePerms := []models.Permission{
+		{
+			Action:       pointer.String("WRITE"),
+			Resource:     []string{database.Spec.DatabaseName},
+			ResourceType: pointer.String("db"),
+		},
+		{
+			Action:       pointer.String("WRITE"),
+			Resource:     []string{database.Spec.DatabaseName},
+			ResourceType: pointer.String("metadata"),
+		},
+	}
+	return writePerms
 }
 
 func getReadPermissions(database *stardogv1beta1.Database) []models.Permission {

@@ -50,8 +50,3 @@ type InstanceList struct {
 func init() {
 	SchemeBuilder.Register(&Instance{}, &InstanceList{})
 }
-
-// StardogInstanceRef defines a reference to a Stardog instance
-type StardogInstanceRef struct {
-	Name string `json:"name,omitempty"`
-}

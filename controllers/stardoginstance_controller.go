@@ -179,19 +179,19 @@ func (r *StardogInstanceReconciler) roleFinalizer(sir *StardogInstanceReconcilia
 func (r *StardogInstanceReconciler) databaseFinalizer(sir *StardogInstanceReconciliation) error {
 	resource := sir.resource
 	databasesList := &v1beta1.DatabaseList{}
-	err := r.Client.List(sir.reconciliationContext.context, databasesList, client.InNamespace(resource.Namespace))
+	err := r.Client.List(sir.reconciliationContext.context, databasesList)
 	if err != nil {
 		return fmt.Errorf("cannot list Stardog Databases CRDs: %v", err)
 	}
 	items := databasesList.Items
 	activeDatabases := make([]string, len(items))
 	for _, stardogDatabase := range items {
-		if stardogDatabase.Spec.StardogInstanceRef == resource.Name {
+		if containsStardogInstanceRef(stardogDatabase.Spec.StardogInstanceRefs, v1beta1.NewStardogInstanceRef(resource.Name, resource.Namespace)) {
 			activeDatabases = append(activeDatabases, stardogDatabase.Name)
 		}
 	}
-	if len(items) > 0 {
-		return fmt.Errorf("cannot delete StardogInstance, found %s role CRDs", activeDatabases)
+	if len(activeDatabases) > 0 {
+		return fmt.Errorf("cannot delete StardogInstance, found %s databases CRDs", activeDatabases)
 	}
 	return nil
 }

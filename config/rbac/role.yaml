@@ -10,7 +10,6 @@ rules:
   resources:
   - databases
   verbs:
-  - create
   - get
   - list
   - patch
@@ -20,40 +19,6 @@ rules:
   - stardog.vshn.ch
   resources:
   - databases/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - stardog.vshn.ch
-  resources:
-  - databasesets
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - stardog.vshn.ch
-  resources:
-  - databasesets/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - stardog.vshn.ch
-  resources:
-  - instances
-  verbs:
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - stardog.vshn.ch
-  resources:
-  - instances/status
   verbs:
   - get
   - patch

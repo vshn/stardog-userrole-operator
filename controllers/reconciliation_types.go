@@ -74,12 +74,13 @@ func (rc *ReconciliationContext) initStardogClient(kubeClient client.Client, sta
 	return auth.BasicAuth(adminUsername, adminPassword), nil
 }
 
-func (rc *ReconciliationContext) initStardogClientFromRef(kubeClient client.Client, stardogInstanceRef string) (runtime.ClientAuthInfoWriter, error) {
+func (rc *ReconciliationContext) initStardogClientFromRef(kubeClient client.Client, instance v1beta1.StardogInstanceRef) (runtime.ClientAuthInfoWriter, error) {
 	stardogInstance := &StardogInstance{}
-	err := kubeClient.Get(rc.context, types.NamespacedName{Namespace: rc.namespace, Name: stardogInstanceRef}, stardogInstance)
+	err := kubeClient.Get(rc.context, types.NamespacedName{Namespace: instance.Namespace, Name: instance.Name}, stardogInstance)
 	if err != nil {
-		return nil, fmt.Errorf("cannot retrieve stardogInstanceRef %s/%s: %v", rc.namespace, stardogInstanceRef, err)
+		return nil, fmt.Errorf("cannot retrieve stardogInstanceRef %s/%s: %v", instance.Namespace, instance.Name, err)
 	}
+	rc.namespace = stardogInstance.Namespace
 	return rc.initStardogClient(kubeClient, *stardogInstance)
 }
 

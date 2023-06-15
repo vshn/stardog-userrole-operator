@@ -222,3 +222,26 @@ func NewStardogAPIClientFromInstance(ctx context.Context, client client.Client, 
 
 	return stardogapi.NewClient(instance.Spec.AdminCredentialRef.Key, string(credentialSecret.Data[instance.Spec.AdminCredentialRef.Key]), instance.Spec.URL), nil
 }
+
+func removeIndex(refs []stardogv1beta1.StardogInstanceRef, ref stardogv1beta1.StardogInstanceRef) []stardogv1beta1.StardogInstanceRef {
+	index := -1
+	for i, curRef := range refs {
+		if reflect.DeepEqual(curRef, ref) {
+			index = i
+			break
+		}
+	}
+	if index == -1 {
+		return refs
+	}
+	return append(refs[:index], refs[index+1:]...)
+}
+
+func containsStardogInstanceRef(refs []stardogv1beta1.StardogInstanceRef, ref stardogv1beta1.StardogInstanceRef) bool {
+	for _, curRef := range refs {
+		if reflect.DeepEqual(curRef, ref) {
+			return true
+		}
+	}
+	return false
+}

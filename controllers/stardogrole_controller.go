@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"github.com/vshn/stardog-userrole-operator/api/v1beta1"
 	stardog "github.com/vshn/stardog-userrole-operator/stardogrest/client"
 	"github.com/vshn/stardog-userrole-operator/stardogrest/client/roles"
 	"github.com/vshn/stardog-userrole-operator/stardogrest/client/roles_permissions"
@@ -117,7 +118,7 @@ func (r *StardogRoleReconciler) syncRole(srr *StardogRoleReconciliation) error {
 	}
 
 	r.Log.V(1).Info("init Stardog Client from ", "ref", spec.StardogInstanceRef)
-	auth, err := srr.reconciliationContext.initStardogClientFromRef(r.Client, spec.StardogInstanceRef)
+	auth, err := srr.reconciliationContext.initStardogClientFromRef(r.Client, v1beta1.NewStardogInstanceRef(spec.StardogInstanceRef, namespace))
 	if err != nil {
 		return err
 	}
@@ -248,7 +249,7 @@ func (r *StardogRoleReconciler) finalize(srr *StardogRoleReconciliation) error {
 	namespace := srr.reconciliationContext.namespace
 
 	r.Log.V(1).Info("setup Stardog Client from ", "ref", spec.StardogInstanceRef)
-	auth, err := srr.reconciliationContext.initStardogClientFromRef(r.Client, spec.StardogInstanceRef)
+	auth, err := srr.reconciliationContext.initStardogClientFromRef(r.Client, v1beta1.NewStardogInstanceRef(spec.StardogInstanceRef, namespace))
 	if err != nil {
 		return err
 	}

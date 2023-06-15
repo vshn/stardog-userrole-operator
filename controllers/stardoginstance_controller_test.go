@@ -7,7 +7,6 @@ import (
 	"github.com/vshn/stardog-userrole-operator/stardogrest/client/users"
 	stardogmock "github.com/vshn/stardog-userrole-operator/stardogrest/mocks"
 	"github.com/vshn/stardog-userrole-operator/stardogrest/models"
-	"k8s.io/utils/pointer"
 	"os"
 	"testing"
 	"time"
@@ -406,7 +405,7 @@ func Test_validateConnection(t *testing.T) {
 
 			stardogMocked.EXPECT().
 				IsEnabled(gomock.Any(), gomock.Any()).
-				Return(&users.IsEnabledOK{Payload: &models.Enabled{Enabled: pointer.Bool(false)}}, tt.err).
+				Return(&users.IsEnabledOK{Payload: &models.Enabled{Enabled: false}}, tt.err).
 				Times(1)
 
 			err = r.validateConnection(&tt.sir)
