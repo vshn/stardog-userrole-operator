@@ -77,13 +77,20 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "StardogInstance")
 		os.Exit(1)
 	}
-
 	if err = (&controllers.DatabaseReconciler{
 		Client: mgr.GetClient(),
 		Log:    ctrl.Log.WithName("controllers").WithName("Database"),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Database")
+		os.Exit(1)
+	}
+	if err = (&controllers.OrganizationReconciler{
+		Client: mgr.GetClient(),
+		Log:    ctrl.Log.WithName("controllers").WithName("Organization"),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Organization")
 		os.Exit(1)
 	}
 

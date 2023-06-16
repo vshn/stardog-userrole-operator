@@ -23,6 +23,12 @@ type ReconciliationContext struct {
 	namespace     string
 }
 
+type OrganizationReconciliation struct {
+	database              *v1beta1.Database
+	resource              *v1beta1.Organization
+	reconciliationContext *ReconciliationContext
+}
+
 type DatabaseReconciliation struct {
 	resource              *v1beta1.Database
 	reconciliationContext *ReconciliationContext

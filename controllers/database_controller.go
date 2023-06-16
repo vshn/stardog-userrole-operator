@@ -139,7 +139,7 @@ func (r *DatabaseReconciler) updateStatus(dr *DatabaseReconciliation) error {
 		r.Log.Error(err, "could not update Database", getLoggingKeysAndValuesForDatabase(res)...)
 		return err
 	}
-	r.Log.Info("updated StardogRole status", getLoggingKeysAndValuesForDatabase(res)...)
+	r.Log.Info("updated Database status", getLoggingKeysAndValuesForDatabase(res)...)
 	return nil
 }
 
@@ -148,9 +148,19 @@ func (r *DatabaseReconciler) deleteDatabases(dr *DatabaseReconciliation) error {
 	database := dr.resource
 	r.Log.Info(fmt.Sprintf("checking if Stardog Database %s is deletable for each instance %s", dr.resource.Name, instances))
 
+	// Do not delete the database unless there are no organizations
+	orgs := &stardogv1beta1.OrganizationList{}
+	err := r.Client.List(dr.reconciliationContext.context, orgs)
+	if err != nil {
+		return fmt.Errorf("cannot get organization list for database %s: %v", database.Spec.DatabaseName, err)
+	}
+	if len(orgs.Items) > 0 {
+		return fmt.Errorf("cannot delete database while having %d organizations", len(orgs.Items))
+	}
+
 	for _, instance := range instances {
 		if err := r.deleteDatabase(dr, instance); err != nil {
-			return fmt.Errorf("cannot delete stardog database: %v", err)
+			return fmt.Errorf("cannot delete database: %v", err)
 		}
 
 		database.Spec.StardogInstanceRefs = removeIndex(database.Spec.StardogInstanceRefs, instance)
@@ -161,9 +171,9 @@ func (r *DatabaseReconciler) deleteDatabases(dr *DatabaseReconciliation) error {
 	}
 
 	controllerutil.RemoveFinalizer(database, databaseFinalizer)
-	err := r.Update(dr.reconciliationContext.context, database)
+	err = r.Update(dr.reconciliationContext.context, database)
 	if err != nil {
-		return fmt.Errorf("cannot update Database CRD: %v", err)
+		return fmt.Errorf("cannot update database: %v", err)
 	}
 
 	return nil
@@ -181,13 +191,12 @@ func (r *DatabaseReconciler) deleteDatabase(dr *DatabaseReconciliation, instance
 	stardogClient := dr.reconciliationContext.stardogClient
 	dbName := database.Spec.DatabaseName
 
+	// Do not delete the database unless it's empty
 	sizeParams := db.NewGetDBSizeParams().WithDb(dbName).WithExact(pointer.Bool(false))
 	dbSize, err := stardogClient.Db.GetDBSize(sizeParams, auth)
 	if err != nil || !dbSize.IsSuccess() {
-		return fmt.Errorf("cannot determine the size of the database %s: %v", dbName, err.Error())
+		return fmt.Errorf("cannot determine the size of the database %s: %v", dbName, err)
 	}
-
-	// Do not delete the database unless it's empty
 	if dbSize.Payload != "0" {
 		return fmt.Errorf("cannot delete non empty database %s", dbName)
 	}
@@ -196,14 +205,14 @@ func (r *DatabaseReconciler) deleteDatabase(dr *DatabaseReconciliation, instance
 
 	// Remove permissions
 	permReadParam := roles_permissions.NewRemoveRolePermissionParams().WithRole(read)
-	for _, p := range getReadPermissions(database) {
+	for _, p := range getDBReadPermissions(database) {
 		permResp, err := stardogClient.RolesPermissions.RemoveRolePermission(permReadParam.WithPermission(&p), auth)
 		if err != nil || !permResp.IsSuccess() {
 			return fmt.Errorf("cannot remove permission %#v of role %s: %v", p, read, err)
 		}
 	}
 	permWriteParam := roles_permissions.NewRemoveRolePermissionParams().WithRole(write)
-	for _, p := range getWritePermissions(database) {
+	for _, p := range getDBWritePermissions(database) {
 		permResp, err := stardogClient.RolesPermissions.RemoveRolePermission(permWriteParam.WithPermission(&p), auth)
 		if err != nil || !permResp.IsSuccess() {
 			return fmt.Errorf("cannot remove permission %#v of role %s: %v", p, write, err)
@@ -354,14 +363,14 @@ func (r *DatabaseReconciler) syncDB(dr *DatabaseReconciliation) error {
 		}
 
 		//create read and write permissions for user roles
-		readPerms := getReadPermissions(database)
+		readPerms := getDBReadPermissions(database)
 		err = createDefaultPermissions(stardogClient, auth, readName, readPerms)
 		if err != nil {
 			r.Log.Error(err, "adding permission to role failed", "role", readName, "permission", readPerms)
 			return err
 		}
 
-		writePerms := getWritePermissions(database)
+		writePerms := getDBWritePermissions(database)
 		err = createDefaultPermissions(stardogClient, auth, writeName, writePerms)
 		if err != nil {
 			r.Log.Error(err, "adding permission to role failed", "role", writeName, "permission", writePerms)
@@ -427,14 +436,15 @@ func (r *DatabaseReconciler) SetupWithManager(mgr ctrl.Manager) error {
 // Generate and save credentials for Database
 func (r *DatabaseReconciler) createCredentials(dr *DatabaseReconciliation, secretName string, readName string, writeName string) (*corev1.Secret, error) {
 	database := dr.resource
+	rc := dr.reconciliationContext
 	ctx := dr.reconciliationContext.context
 	secret := &corev1.Secret{}
-	err := r.Get(ctx, types.NamespacedName{Name: secretName, Namespace: database.Namespace}, secret)
+	err := r.Get(ctx, types.NamespacedName{Name: secretName, Namespace: rc.namespace}, secret)
 
 	if err == nil {
 		return secret, nil
 	} else if !apierrors.IsNotFound(err) {
-		r.Log.Error(err, fmt.Sprintf("error getting Secret %s/%s", database.Namespace, secretName))
+		r.Log.Error(err, fmt.Sprintf("error getting Secret %s/%s", rc.namespace, secretName))
 		return nil, err
 	}
 
@@ -469,13 +479,13 @@ func (r *DatabaseReconciler) createCredentials(dr *DatabaseReconciliation, secre
 	if err != nil && apierrors.IsAlreadyExists(err) {
 		err = r.Get(ctx, types.NamespacedName{Name: secretName, Namespace: secret.Namespace}, secret)
 		if err != nil {
-			r.Log.Error(err, fmt.Sprintf("error creating secret %s/%s", database.Namespace, secretName))
+			r.Log.Error(err, fmt.Sprintf("error creating secret %s/%s", rc.namespace, secretName))
 			return nil, fmt.Errorf("cannot get existing credentials from secret %s: %v", secretName, err)
 		}
 		return secret, nil
 	}
 	if err != nil {
-		r.Log.Error(err, fmt.Sprintf("error creating secret %s/%s", database.Namespace, secretName))
+		r.Log.Error(err, fmt.Sprintf("error creating secret %s/%s", rc.namespace, secretName))
 		return nil, err
 	}
 
@@ -563,8 +573,8 @@ func createDefaultRolesForDB(stardogClient *stardog.Stardog, auth runtime.Client
 	return nil
 }
 
-func getWritePermissions(database *stardogv1beta1.Database) []models.Permission {
-	writePerms := []models.Permission{
+func getDBWritePermissions(database *stardogv1beta1.Database) []models.Permission {
+	return []models.Permission{
 		{
 			Action:       pointer.String("WRITE"),
 			Resource:     []string{database.Spec.DatabaseName},
@@ -576,11 +586,10 @@ func getWritePermissions(database *stardogv1beta1.Database) []models.Permission 
 			ResourceType: pointer.String("metadata"),
 		},
 	}
-	return writePerms
 }
 
-func getReadPermissions(database *stardogv1beta1.Database) []models.Permission {
-	readPerms := []models.Permission{
+func getDBReadPermissions(database *stardogv1beta1.Database) []models.Permission {
+	return []models.Permission{
 		{
 			Action:       pointer.String("READ"),
 			Resource:     []string{database.Spec.DatabaseName},
@@ -592,12 +601,11 @@ func getReadPermissions(database *stardogv1beta1.Database) []models.Permission {
 			ResourceType: pointer.String("metadata"),
 		},
 	}
-	return readPerms
 }
 
 func getLoggingKeysAndValuesForDatabase(stardogDatabase *stardogv1beta1.Database) []interface{} {
 	return []interface{}{
-		"StardogDatabase", stardogDatabase.Namespace + "/" + stardogDatabase.Name,
+		"StardogDatabase", stardogDatabase.Name,
 	}
 }
 
