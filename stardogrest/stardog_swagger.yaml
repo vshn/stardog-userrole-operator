@@ -38,6 +38,10 @@ paths:
           description: The size (in triples) of the database
           schema:
             type: string
+        '404':
+          description: Database does not exist
+          schema:
+            "$ref": "#/definitions/NotExists"
   /admin/databases:
     get:
       tags:
@@ -90,7 +94,7 @@ paths:
         '404':
           description: Database does not exist
           schema:
-            "$ref": "#/definitions/DBMissing"
+            "$ref": "#/definitions/NotExists"
         default:
           description: unexpected error
           schema:
@@ -267,7 +271,6 @@ paths:
       tags:
       - users
         roles
-
       consumes:
       - application/json
       parameters:
@@ -295,7 +298,6 @@ paths:
       tags:
       - users
         roles
-
       consumes:
       - application/json
       parameters:
@@ -338,6 +340,10 @@ paths:
       responses:
         '204':
           description: Null response
+        '404':
+          description: Role user does not exist
+          schema:
+            "$ref": "#/definitions/NotExists"
         default:
           description: unexpected error
           schema:
@@ -357,6 +363,10 @@ paths:
       responses:
         '204':
           description: Null response
+        '404':
+          description: User does not exist
+          schema:
+            "$ref": "#/definitions/NotExists"
         default:
           description: unexpected error
           schema:
@@ -439,6 +449,10 @@ paths:
       responses:
         '204':
           description: Null response
+        '404':
+          description: Role does not exist
+          schema:
+            "$ref": "#/definitions/NotExists"
         default:
           description: unexpected error
           schema:
@@ -471,7 +485,6 @@ paths:
       tags:
       - roles
         permissions
-
       consumes:
       - application/json
       parameters:
@@ -521,7 +534,6 @@ paths:
       tags:
       - users
         permissions
-
       consumes:
       - application/json
       parameters:
@@ -567,6 +579,10 @@ paths:
       responses:
         '201':
           description: Null response
+        '404':
+          description: Role permission does not exist
+          schema:
+            "$ref": "#/definitions/NotExists"
         default:
           description: unexpected error
           schema:
@@ -595,6 +611,10 @@ paths:
       responses:
         '201':
           description: Null response
+        '404':
+          description: User permission does not exist
+          schema:
+            "$ref": "#/definitions/NotExists"
         default:
           description: unexpected error
           schema:
@@ -637,6 +657,15 @@ definitions:
       code:
         type: integer
         format: int32
+      message:
+        type: string
+  NotExists:
+    required:
+      - message
+      - code
+    properties:
+      code:
+        type: string
       message:
         type: string
   Permission:
@@ -718,17 +747,6 @@ definitions:
       message:
         type: string
         example: Successfully executed request
-  DBMissing:
-    required:
-      - message
-      - code
-    properties:
-      message:
-        type: string
-        example: Database does not exist
-      code:
-        type: string
-        example: 0D0DU2
   Databases:
     required:
       - databases

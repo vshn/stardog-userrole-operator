@@ -11,6 +11,8 @@ import (
 
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/strfmt"
+
+	"github.com/vshn/stardog-userrole-operator/stardogrest/models"
 )
 
 // GetDBSizeReader is a Reader for the GetDBSize structure.
@@ -27,6 +29,12 @@ func (o *GetDBSizeReader) ReadResponse(response runtime.ClientResponse, consumer
 			return nil, err
 		}
 		return result, nil
+	case 404:
+		result := NewGetDBSizeNotFound()
+		if err := result.readResponse(response, consumer, o.formats); err != nil {
+			return nil, err
+		}
+		return nil, result
 	default:
 		return nil, runtime.NewAPIError("[GET /{db}/size] getDBSize", response, response.Code())
 	}
@@ -92,6 +100,74 @@ func (o *GetDBSizeOK) readResponse(response runtime.ClientResponse, consumer run
 
 	// response payload
 	if err := consumer.Consume(response.Body(), &o.Payload); err != nil && err != io.EOF {
+		return err
+	}
+
+	return nil
+}
+
+// NewGetDBSizeNotFound creates a GetDBSizeNotFound with default headers values
+func NewGetDBSizeNotFound() *GetDBSizeNotFound {
+	return &GetDBSizeNotFound{}
+}
+
+/*
+GetDBSizeNotFound describes a response with status code 404, with default header values.
+
+Database does not exist
+*/
+type GetDBSizeNotFound struct {
+	Payload *models.NotExists
+}
+
+// IsSuccess returns true when this get d b size not found response has a 2xx status code
+func (o *GetDBSizeNotFound) IsSuccess() bool {
+	return false
+}
+
+// IsRedirect returns true when this get d b size not found response has a 3xx status code
+func (o *GetDBSizeNotFound) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this get d b size not found response has a 4xx status code
+func (o *GetDBSizeNotFound) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this get d b size not found response has a 5xx status code
+func (o *GetDBSizeNotFound) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this get d b size not found response a status code equal to that given
+func (o *GetDBSizeNotFound) IsCode(code int) bool {
+	return code == 404
+}
+
+// Code gets the status code for the get d b size not found response
+func (o *GetDBSizeNotFound) Code() int {
+	return 404
+}
+
+func (o *GetDBSizeNotFound) Error() string {
+	return fmt.Sprintf("[GET /{db}/size][%d] getDBSizeNotFound  %+v", 404, o.Payload)
+}
+
+func (o *GetDBSizeNotFound) String() string {
+	return fmt.Sprintf("[GET /{db}/size][%d] getDBSizeNotFound  %+v", 404, o.Payload)
+}
+
+func (o *GetDBSizeNotFound) GetPayload() *models.NotExists {
+	return o.Payload
+}
+
+func (o *GetDBSizeNotFound) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+
+	o.Payload = new(models.NotExists)
+
+	// response payload
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
 		return err
 	}
 

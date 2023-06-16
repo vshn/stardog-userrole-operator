@@ -126,7 +126,7 @@ DropDatabaseNotFound describes a response with status code 404, with default hea
 Database does not exist
 */
 type DropDatabaseNotFound struct {
-	Payload *models.DBMissing
+	Payload *models.NotExists
 }
 
 // IsSuccess returns true when this drop database not found response has a 2xx status code
@@ -167,13 +167,13 @@ func (o *DropDatabaseNotFound) String() string {
 	return fmt.Sprintf("[DELETE /admin/databases/{db}][%d] dropDatabaseNotFound  %+v", 404, o.Payload)
 }
 
-func (o *DropDatabaseNotFound) GetPayload() *models.DBMissing {
+func (o *DropDatabaseNotFound) GetPayload() *models.NotExists {
 	return o.Payload
 }
 
 func (o *DropDatabaseNotFound) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
-	o.Payload = new(models.DBMissing)
+	o.Payload = new(models.NotExists)
 
 	// response payload
 	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {

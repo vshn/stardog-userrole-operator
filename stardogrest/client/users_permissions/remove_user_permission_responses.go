@@ -29,6 +29,12 @@ func (o *RemoveUserPermissionReader) ReadResponse(response runtime.ClientRespons
 			return nil, err
 		}
 		return result, nil
+	case 404:
+		result := NewRemoveUserPermissionNotFound()
+		if err := result.readResponse(response, consumer, o.formats); err != nil {
+			return nil, err
+		}
+		return nil, result
 	default:
 		result := NewRemoveUserPermissionDefault(response.Code())
 		if err := result.readResponse(response, consumer, o.formats); err != nil {
@@ -93,6 +99,74 @@ func (o *RemoveUserPermissionCreated) String() string {
 }
 
 func (o *RemoveUserPermissionCreated) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+
+	return nil
+}
+
+// NewRemoveUserPermissionNotFound creates a RemoveUserPermissionNotFound with default headers values
+func NewRemoveUserPermissionNotFound() *RemoveUserPermissionNotFound {
+	return &RemoveUserPermissionNotFound{}
+}
+
+/*
+RemoveUserPermissionNotFound describes a response with status code 404, with default header values.
+
+User permission does not exist
+*/
+type RemoveUserPermissionNotFound struct {
+	Payload *models.NotExists
+}
+
+// IsSuccess returns true when this remove user permission not found response has a 2xx status code
+func (o *RemoveUserPermissionNotFound) IsSuccess() bool {
+	return false
+}
+
+// IsRedirect returns true when this remove user permission not found response has a 3xx status code
+func (o *RemoveUserPermissionNotFound) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this remove user permission not found response has a 4xx status code
+func (o *RemoveUserPermissionNotFound) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this remove user permission not found response has a 5xx status code
+func (o *RemoveUserPermissionNotFound) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this remove user permission not found response a status code equal to that given
+func (o *RemoveUserPermissionNotFound) IsCode(code int) bool {
+	return code == 404
+}
+
+// Code gets the status code for the remove user permission not found response
+func (o *RemoveUserPermissionNotFound) Code() int {
+	return 404
+}
+
+func (o *RemoveUserPermissionNotFound) Error() string {
+	return fmt.Sprintf("[POST /admin/permissions/user/{user}/delete][%d] removeUserPermissionNotFound  %+v", 404, o.Payload)
+}
+
+func (o *RemoveUserPermissionNotFound) String() string {
+	return fmt.Sprintf("[POST /admin/permissions/user/{user}/delete][%d] removeUserPermissionNotFound  %+v", 404, o.Payload)
+}
+
+func (o *RemoveUserPermissionNotFound) GetPayload() *models.NotExists {
+	return o.Payload
+}
+
+func (o *RemoveUserPermissionNotFound) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+
+	o.Payload = new(models.NotExists)
+
+	// response payload
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+		return err
+	}
 
 	return nil
 }

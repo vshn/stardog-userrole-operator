@@ -292,30 +292,30 @@ func (r *OrganizationReconciler) deleteOrganization(or *OrganizationReconciliati
 	// Remove all permissions
 	permParam := roles_permissions.NewRemoveRolePermissionParams().WithRole(userRoleName)
 	for _, p := range getOrganizationPerms(database, org, dbName) {
-		permResp, err := stardogClient.RolesPermissions.RemoveRolePermission(permParam.WithPermission(&p), auth)
-		if err != nil || !permResp.IsSuccess() {
+		_, err = stardogClient.RolesPermissions.RemoveRolePermission(permParam.WithPermission(&p), auth)
+		if err != nil && !NotFound(err) {
 			return fmt.Errorf("cannot remove permission %#v of role %s: %v", p, userRoleName, err)
 		}
 	}
 
 	// Remove assigned role to user
 	param := users_roles.NewRemoveRoleOfUserParams()
-	roleUserResp, err := stardogClient.UsersRoles.RemoveRoleOfUser(param.WithUser(userRoleName).WithRole(userRoleName), auth)
-	if err != nil || !roleUserResp.IsSuccess() {
+	_, err = stardogClient.UsersRoles.RemoveRoleOfUser(param.WithUser(userRoleName).WithRole(userRoleName), auth)
+	if err != nil && !NotFound(err) {
 		return fmt.Errorf("cannot remove assigned role %s from user %s: %v", userRoleName, userRoleName, err)
 	}
 
 	// Remove role
 	roleParam := roles.NewRemoveRoleParams()
-	role, err := stardogClient.Roles.RemoveRole(roleParam.WithRole(userRoleName), auth)
-	if err != nil || !role.IsSuccess() {
+	_, err = stardogClient.Roles.RemoveRole(roleParam.WithRole(userRoleName), auth)
+	if err != nil && !NotFound(err) {
 		return fmt.Errorf("cannot remove role %s: %v", userRoleName, err)
 	}
 
 	// Remove read and write users
 	userParam := users.NewRemoveUserParams()
-	user, err := stardogClient.Users.RemoveUser(userParam.WithUser(userRoleName), auth)
-	if err != nil || !user.IsSuccess() {
+	_, err = stardogClient.Users.RemoveUser(userParam.WithUser(userRoleName), auth)
+	if err != nil && !NotFound(err) {
 		return fmt.Errorf("cannot remove user %s: %v", userRoleName, err)
 	}
 

@@ -29,6 +29,12 @@ func (o *RemoveRoleOfUserReader) ReadResponse(response runtime.ClientResponse, c
 			return nil, err
 		}
 		return result, nil
+	case 404:
+		result := NewRemoveRoleOfUserNotFound()
+		if err := result.readResponse(response, consumer, o.formats); err != nil {
+			return nil, err
+		}
+		return nil, result
 	default:
 		result := NewRemoveRoleOfUserDefault(response.Code())
 		if err := result.readResponse(response, consumer, o.formats); err != nil {
@@ -93,6 +99,74 @@ func (o *RemoveRoleOfUserNoContent) String() string {
 }
 
 func (o *RemoveRoleOfUserNoContent) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+
+	return nil
+}
+
+// NewRemoveRoleOfUserNotFound creates a RemoveRoleOfUserNotFound with default headers values
+func NewRemoveRoleOfUserNotFound() *RemoveRoleOfUserNotFound {
+	return &RemoveRoleOfUserNotFound{}
+}
+
+/*
+RemoveRoleOfUserNotFound describes a response with status code 404, with default header values.
+
+Role user does not exist
+*/
+type RemoveRoleOfUserNotFound struct {
+	Payload *models.NotExists
+}
+
+// IsSuccess returns true when this remove role of user not found response has a 2xx status code
+func (o *RemoveRoleOfUserNotFound) IsSuccess() bool {
+	return false
+}
+
+// IsRedirect returns true when this remove role of user not found response has a 3xx status code
+func (o *RemoveRoleOfUserNotFound) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this remove role of user not found response has a 4xx status code
+func (o *RemoveRoleOfUserNotFound) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this remove role of user not found response has a 5xx status code
+func (o *RemoveRoleOfUserNotFound) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this remove role of user not found response a status code equal to that given
+func (o *RemoveRoleOfUserNotFound) IsCode(code int) bool {
+	return code == 404
+}
+
+// Code gets the status code for the remove role of user not found response
+func (o *RemoveRoleOfUserNotFound) Code() int {
+	return 404
+}
+
+func (o *RemoveRoleOfUserNotFound) Error() string {
+	return fmt.Sprintf("[DELETE /admin/users/{user}/roles/{role}][%d] removeRoleOfUserNotFound  %+v", 404, o.Payload)
+}
+
+func (o *RemoveRoleOfUserNotFound) String() string {
+	return fmt.Sprintf("[DELETE /admin/users/{user}/roles/{role}][%d] removeRoleOfUserNotFound  %+v", 404, o.Payload)
+}
+
+func (o *RemoveRoleOfUserNotFound) GetPayload() *models.NotExists {
+	return o.Payload
+}
+
+func (o *RemoveRoleOfUserNotFound) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+
+	o.Payload = new(models.NotExists)
+
+	// response payload
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+		return err
+	}
 
 	return nil
 }
