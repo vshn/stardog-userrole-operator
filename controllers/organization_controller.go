@@ -23,6 +23,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"strings"
 )
 
 const orgFinalizer = "finalizer.stardog.organizations"
@@ -107,6 +108,7 @@ func (r *OrganizationReconciler) reconcileOrganization(or *OrganizationReconcili
 		return ctrl.Result{Requeue: true, RequeueAfter: ReconFreqErr}, r.updateStatus(or)
 	}
 
+	or.resource.Status.StardogInstanceRefs = or.database.Status.StardogInstanceRefs
 	rc.SetStatusCondition(createStatusConditionReady(true, "Synchronized"))
 	return ctrl.Result{Requeue: true, RequeueAfter: ReconFreq}, r.updateStatus(or)
 }
@@ -169,6 +171,27 @@ func (r *OrganizationReconciler) validateSpecification(ctx context.Context, orga
 }
 
 func (r *OrganizationReconciler) syncOrganization(or *OrganizationReconciliation) error {
+	dbInstances := or.database.Status.StardogInstanceRefs
+	orgInstances := or.resource.Status.StardogInstanceRefs
+
+	// Create an organization for each instance in spec.StardogInstanceRefs
+	for _, instance := range dbInstances {
+		if err := r.sync(or, instance); err != nil {
+			return fmt.Errorf("unable to sync instance %s for organization %s", instance.Name, or.resource.Name)
+		}
+	}
+
+	// Remove an organization for any removed instance from spec.StardogInstanceRefs
+	for _, instance := range getRemovedInstances(dbInstances, orgInstances) {
+		if err := r.deleteOrganization(or, instance); err != nil {
+			return fmt.Errorf("cannot delete organization %s for instance %s: %v", or.resource.Name, instance.Name, err)
+		}
+	}
+
+	return nil
+}
+
+func (r *OrganizationReconciler) sync(or *OrganizationReconciliation, instance stardogv1beta1.StardogInstanceRef) error {
 	rc := or.reconciliationContext
 	database := or.database
 	dbName := database.Spec.DatabaseName
@@ -176,64 +199,62 @@ func (r *OrganizationReconciler) syncOrganization(or *OrganizationReconciliation
 	orgName := org.Spec.Name
 	stardogClient := or.reconciliationContext.stardogClient
 
-	for _, instance := range database.Spec.StardogInstanceRefs {
-		auth, err := rc.initStardogClientFromRef(r.Client, instance)
-		if err != nil {
-			return fmt.Errorf("cannot initialize stardog client: %v", err)
-		}
+	auth, err := rc.initStardogClientFromRef(r.Client, instance)
+	if err != nil {
+		return fmt.Errorf("cannot initialize stardog client: %v", err)
+	}
 
-		// Generate and save credentials in k8s
-		secretName := getUsersCredentialSecret(dbName, orgName)
-		userRoleName := getUserAndRoleName(dbName, orgName)
-		credDBSecret, err := r.createCredentials(or, secretName, userRoleName)
-		if err != nil {
+	// Generate and save credentials in k8s
+	secretName := getUsersCredentialSecret(dbName, orgName)
+	userRoleName := getUserAndRoleName(dbName, orgName)
+	credDBSecret, err := r.createCredentials(or, secretName, userRoleName)
+	if err != nil {
+		return err
+	}
+
+	// create default write user for organization
+	usrs := []models.User{
+		{Password: []string{string(credDBSecret.Data[userRoleName])}, Username: &userRoleName},
+	}
+	err = createDefaultUsersForDB(stardogClient, auth, usrs)
+	if err != nil {
+		r.Log.Error(err, "error creating users", "users", usrs)
+		return err
+	}
+
+	// create default read and write roles
+	rolenames := []models.Rolename{
+		{Rolename: &userRoleName},
+	}
+	err = createDefaultRolesForDB(stardogClient, auth, rolenames)
+	if err != nil {
+		r.Log.Error(err, "error creating roles", "roles", rolenames)
+		return err
+	}
+
+	//create read and write permissions for user roles
+	perms := getOrganizationPerms(database, org, dbName)
+	err = createDefaultPermissions(stardogClient, auth, userRoleName, perms)
+	if err != nil {
+		r.Log.Error(err, "adding permission to role failed", "role", userRoleName, "permission", perms)
+		return err
+	}
+
+	// assign roles to users
+	readUserRolesResp, err := stardogClient.UsersRoles.ListUserRoles(users_roles.NewListUserRolesParams().WithUser(userRoleName), auth)
+	if err != nil || !readUserRolesResp.IsSuccess() {
+		r.Log.Error(err, "error getting user roles", "user", userRoleName)
+		return err
+	}
+
+	if !slices.Contains(readUserRolesResp.Payload.Roles, userRoleName) {
+		params := users_roles.NewAddRoleParams().
+			WithUser(userRoleName).
+			WithRole(&models.Rolename{Rolename: &userRoleName})
+		roleResp, err := stardogClient.UsersRoles.AddRole(params, auth)
+		if err != nil || !roleResp.IsSuccess() {
+			r.Log.Error(err, "error assigning role to user", "user", userRoleName, "role", userRoleName)
 			return err
-		}
-
-		// create default write user for organization
-		usrs := []models.User{
-			{Password: []string{string(credDBSecret.Data[userRoleName])}, Username: &userRoleName},
-		}
-		err = createDefaultUsersForDB(stardogClient, auth, usrs)
-		if err != nil {
-			r.Log.Error(err, "error creating users", "users", usrs)
-			return err
-		}
-
-		// create default read and write roles
-		rolenames := []models.Rolename{
-			{Rolename: &userRoleName},
-		}
-		err = createDefaultRolesForDB(stardogClient, auth, rolenames)
-		if err != nil {
-			r.Log.Error(err, "error creating roles", "roles", rolenames)
-			return err
-		}
-
-		//create read and write permissions for user roles
-		perms := getOrganizationPerms(database, org, dbName)
-		err = createDefaultPermissions(stardogClient, auth, userRoleName, perms)
-		if err != nil {
-			r.Log.Error(err, "adding permission to role failed", "role", userRoleName, "permission", perms)
-			return err
-		}
-
-		// assign roles to users
-		readUserRolesResp, err := stardogClient.UsersRoles.ListUserRoles(users_roles.NewListUserRolesParams().WithUser(userRoleName), auth)
-		if err != nil || !readUserRolesResp.IsSuccess() {
-			r.Log.Error(err, "error getting user roles", "user", userRoleName)
-			return err
-		}
-
-		if !slices.Contains(readUserRolesResp.Payload.Roles, userRoleName) {
-			params := users_roles.NewAddRoleParams().
-				WithUser(userRoleName).
-				WithRole(&models.Rolename{Rolename: &userRoleName})
-			roleResp, err := stardogClient.UsersRoles.AddRole(params, auth)
-			if err != nil || !roleResp.IsSuccess() {
-				r.Log.Error(err, "error assigning role to user", "user", userRoleName, "role", userRoleName)
-				return err
-			}
 		}
 	}
 	return nil
@@ -254,7 +275,7 @@ func (r *OrganizationReconciler) getDatabaseRef(or *OrganizationReconciliation) 
 }
 
 func (r *OrganizationReconciler) deleteOrganizations(or *OrganizationReconciliation) error {
-	instances := or.database.Spec.StardogInstanceRefs
+	instances := or.database.Status.StardogInstanceRefs
 	org := or.resource
 	r.Log.Info(fmt.Sprintf("deleting organization %s for each Stardog instances %s", or.resource.Name, instances))
 
@@ -398,7 +419,7 @@ func getUserAndRoleName(dbName, orgName string) string {
 func getGraphPermissions(org *stardogv1beta1.Organization, namedGraphPrefix, dbName string) []models.Permission {
 	perms := make([]models.Permission, 0)
 	for _, ng := range org.Spec.NamedGraphs {
-		fullNameNG := namedGraphPrefix + org.Spec.Name + "/" + ng
+		fullNameNG := strings.TrimSuffix(namedGraphPrefix, "/") + "/" + org.Spec.Name + "/" + ng
 		ngPerm := []models.Permission{
 			{
 				Action:       pointer.String("READ"),

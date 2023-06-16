@@ -26,11 +26,12 @@ type OrganizationSpec struct {
 
 // OrganizationStatus defines the observed state of the Organization
 type OrganizationStatus struct {
-	Name        string                      `json:"name,omitempty"`
-	DisplayName string                      `json:"displayName,omitempty"`
-	DatabaseRef string                      `json:"databaseRef,omitempty"`
-	NamedGraphs []string                    `json:"namedGraphs,omitempty"`
-	Conditions  []v1alpha1.StardogCondition `json:"conditions,omitempty"`
+	Name                string                      `json:"name,omitempty"`
+	DisplayName         string                      `json:"displayName,omitempty"`
+	DatabaseRef         string                      `json:"databaseRef,omitempty"`
+	NamedGraphs         []string                    `json:"namedGraphs,omitempty"`
+	StardogInstanceRefs []StardogInstanceRef        `json:"stardogInstanceRefs,omitempty"`
+	Conditions          []v1alpha1.StardogCondition `json:"conditions,omitempty"`
 }
 
 //+kubebuilder:object:root=true

@@ -445,11 +445,11 @@ func (r *DatabaseReconciler) sync(dr *DatabaseReconciliation, instance stardogv1
 	return nil
 }
 
-func getRemovedInstances(specRefs []stardogv1beta1.StardogInstanceRef, statusRefs []stardogv1beta1.StardogInstanceRef) []stardogv1beta1.StardogInstanceRef {
+func getRemovedInstances(RefsA []stardogv1beta1.StardogInstanceRef, RefsB []stardogv1beta1.StardogInstanceRef) []stardogv1beta1.StardogInstanceRef {
 	removedRefs := make([]stardogv1beta1.StardogInstanceRef, 0)
-	for _, statusRef := range statusRefs {
-		if !containsStardogInstanceRef(specRefs, statusRef) {
-			removedRefs = append(removedRefs, statusRef)
+	for _, ref := range RefsB {
+		if !containsStardogInstanceRef(RefsA, ref) {
+			removedRefs = append(removedRefs, ref)
 		}
 	}
 	return removedRefs
