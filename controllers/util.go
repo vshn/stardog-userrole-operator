@@ -214,17 +214,12 @@ func equals(permissionTypeA models.Permission, permissionTypeB StardogPermission
 }
 
 func removeStardogInstanceRef(refs []stardogv1beta1.StardogInstanceRef, ref stardogv1beta1.StardogInstanceRef) []stardogv1beta1.StardogInstanceRef {
-	index := -1
 	for i, curRef := range refs {
 		if reflect.DeepEqual(curRef, ref) {
-			index = i
-			break
+		    return append(refs[:index], refs[index+1:]...)
 		}
 	}
-	if index == -1 {
-		return refs
-	}
-	return append(refs[:index], refs[index+1:]...)
+	return refs
 }
 
 func containsStardogInstanceRef(refs []stardogv1beta1.StardogInstanceRef, ref stardogv1beta1.StardogInstanceRef) bool {
