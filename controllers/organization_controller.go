@@ -70,6 +70,7 @@ func (r *OrganizationReconciler) reconcileOrganization(or *OrganizationReconcili
 	r.Log.Info("reconciling", getLoggingKeysAndValuesForOrganization(organization)...)
 
 	if err := r.validateSpecification(or.reconciliationContext.context, organization); err != nil {
+		r.Log.Error(err, "Specification cannot be validated")
 		rc.SetStatusCondition(createStatusConditionInvalid(err))
 		rc.SetStatusCondition(createStatusConditionReady(false, "Specification cannot be validated"))
 		return ctrl.Result{Requeue: false}, r.updateStatus(or)
@@ -77,6 +78,7 @@ func (r *OrganizationReconciler) reconcileOrganization(or *OrganizationReconcili
 	rc.SetStatusIfExisting(stardogv1alpha1.StardogInvalid, v1.ConditionFalse)
 
 	if err := r.getDatabaseRef(or); err != nil {
+		r.Log.Error(err, "Cannot get StardogDatabase from reference")
 		rc.SetStatusCondition(createStatusConditionTerminating(err))
 		rc.SetStatusCondition(createStatusConditionReady(false, "Cannot get StardogDatabase from reference"))
 		return ctrl.Result{Requeue: true, RequeueAfter: ReconFreqErr}, r.updateStatus(or)
@@ -85,6 +87,7 @@ func (r *OrganizationReconciler) reconcileOrganization(or *OrganizationReconcili
 	isStardogOrganizationMarkedToBeDeleted := organization.GetDeletionTimestamp() != nil
 	if isStardogOrganizationMarkedToBeDeleted {
 		if err := r.deleteOrganizations(or); err != nil {
+			r.Log.Error(err, "Organization cannot be deleted")
 			rc.SetStatusCondition(createStatusConditionTerminating(err))
 			rc.SetStatusCondition(createStatusConditionReady(false, "Organization cannot be deleted"))
 			return ctrl.Result{Requeue: true, RequeueAfter: ReconFreqErr}, r.updateStatus(or)
@@ -93,6 +96,7 @@ func (r *OrganizationReconciler) reconcileOrganization(or *OrganizationReconcili
 	}
 
 	if err := r.syncOrganization(or); err != nil {
+		r.Log.Error(err, "Synchronization failed")
 		rc.SetStatusCondition(createStatusConditionErrored(err))
 		rc.SetStatusCondition(createStatusConditionReady(false, "Synchronization failed"))
 		return ctrl.Result{Requeue: true, RequeueAfter: ReconFreqErr}, r.updateStatus(or)
@@ -103,6 +107,7 @@ func (r *OrganizationReconciler) reconcileOrganization(or *OrganizationReconcili
 	controllerutil.AddFinalizer(or.resource, orgFinalizer)
 
 	if err := r.Update(or.reconciliationContext.context, or.resource); err != nil {
+		r.Log.Error(err, "Cannot update organization")
 		rc.SetStatusCondition(createStatusConditionErrored(err))
 		rc.SetStatusCondition(createStatusConditionReady(false, "Cannot update organization"))
 		return ctrl.Result{Requeue: true, RequeueAfter: ReconFreqErr}, r.updateStatus(or)

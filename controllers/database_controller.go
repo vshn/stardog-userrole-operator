@@ -91,6 +91,7 @@ func (r *DatabaseReconciler) reconcileDatabase(dr *DatabaseReconciliation) (ctrl
 	isStardogDatabaseMarkedToBeDeleted := database.GetDeletionTimestamp() != nil
 	if isStardogDatabaseMarkedToBeDeleted {
 		if err := r.deleteDatabases(dr); err != nil {
+			r.Log.Error(err, "StardogDatabase cannot be deleted")
 			rc.SetStatusCondition(createStatusConditionTerminating(err))
 			rc.SetStatusCondition(createStatusConditionReady(false, "StardogDatabase cannot be deleted"))
 			return ctrl.Result{Requeue: true, RequeueAfter: ReconFreqErr}, r.updateStatus(dr)
@@ -99,6 +100,7 @@ func (r *DatabaseReconciler) reconcileDatabase(dr *DatabaseReconciliation) (ctrl
 	}
 
 	if err := r.validateSpecification(dr.reconciliationContext.context, dr.resource); err != nil {
+		r.Log.Error(err, "Specification cannot be validated")
 		rc.SetStatusCondition(createStatusConditionInvalid(err))
 		rc.SetStatusCondition(createStatusConditionReady(false, "Specification cannot be validated"))
 		return ctrl.Result{Requeue: false}, r.updateStatus(dr)
@@ -106,6 +108,7 @@ func (r *DatabaseReconciler) reconcileDatabase(dr *DatabaseReconciliation) (ctrl
 	rc.SetStatusIfExisting(stardogv1alpha1.StardogInvalid, v1.ConditionFalse)
 
 	if err := r.syncDB(dr); err != nil {
+		r.Log.Error(err, "Synchronization failed")
 		rc.SetStatusCondition(createStatusConditionErrored(err))
 		rc.SetStatusCondition(createStatusConditionReady(false, "Synchronization failed"))
 		return ctrl.Result{Requeue: true, RequeueAfter: ReconFreqErr}, r.updateStatus(dr)
@@ -117,6 +120,7 @@ func (r *DatabaseReconciler) reconcileDatabase(dr *DatabaseReconciliation) (ctrl
 	controllerutil.AddFinalizer(dr.resource, databaseFinalizer)
 
 	if err := r.Update(dr.reconciliationContext.context, dr.resource); err != nil {
+		r.Log.Error(err, "Cannot update database")
 		rc.SetStatusCondition(createStatusConditionErrored(err))
 		rc.SetStatusCondition(createStatusConditionReady(false, "Cannot update database"))
 		return ctrl.Result{Requeue: true, RequeueAfter: ReconFreqErr}, r.updateStatus(dr)
