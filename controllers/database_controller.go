@@ -155,7 +155,15 @@ func (r *DatabaseReconciler) deleteDatabases(dr *DatabaseReconciliation) error {
 	if err != nil {
 		return fmt.Errorf("cannot get organization list for database %s: %v", database.Spec.DatabaseName, err)
 	}
-	if len(orgs.Items) > 0 {
+
+	// Count the organizations linked to this database
+	dbOrgs := make([]stardogv1beta1.Organization, 0)
+	for _, item := range orgs.Items {
+		if item.Spec.DatabaseRef == database.Spec.DatabaseName {
+			dbOrgs = append(dbOrgs, item)
+		}
+	}
+	if len(dbOrgs) > 0 {
 		return fmt.Errorf("cannot delete database while having %d organizations", len(orgs.Items))
 	}
 
