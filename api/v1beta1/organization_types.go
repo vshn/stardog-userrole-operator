@@ -5,14 +5,14 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// OrganizationSpec defines the desired state of the Organization
+// OrganizationSpec defines the desired state of an Organization
 type OrganizationSpec struct {
 	//+kubebuilder:validation:required
-	// Name the short name of an organization
+	// Name is the short name of an organization
 	Name string `json:"name,omitempty"`
 
 	//+kubebuilder:validation:required
-	// DisplayName the long name of an organization
+	// DisplayName is the long name of an organization
 	DisplayName string `json:"displayName,omitempty"`
 
 	//+kubebuilder:validation:required
@@ -21,6 +21,7 @@ type OrganizationSpec struct {
 
 	//+kubebuilder:validation:required
 	// NamedGraphs are the suffix graph names for this organization. The prefix can be found in the Database resource.
+	// The final graphs is defined as prefix + "/" + orgName + "/" suffix
 	NamedGraphs []string `json:"namedGraphs,omitempty"`
 }
 

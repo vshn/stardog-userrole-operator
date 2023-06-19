@@ -33,21 +33,22 @@ spec:
           metadata:
             type: object
           spec:
-            description: OrganizationSpec defines the desired state of the Organization
+            description: OrganizationSpec defines the desired state of an Organization
             properties:
               databaseRef:
                 description: DatabaseRef is the name of the Database this Organization
                   is assigned to
                 type: string
               displayName:
-                description: DisplayName the long name of an organization
+                description: DisplayName is the long name of an organization
                 type: string
               name:
-                description: Name the short name of an organization
+                description: Name is the short name of an organization
                 type: string
               namedGraphs:
                 description: NamedGraphs are the suffix graph names for this organization.
-                  The prefix can be found in the Database resource.
+                  The prefix can be found in the Database resource. The final graphs
+                  is defined as prefix + "/" + orgName + "/" suffix
                 items:
                   type: string
                 type: array
