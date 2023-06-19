@@ -21,11 +21,11 @@ import (
 )
 
 var (
-	ReconFreqErr = time.Duration(0)
+	ReconFreqErr = time.Second * 30
 	ReconFreq    = time.Duration(0)
 )
 
-// initEnv initialize env variables
+// InitEnv initialize env variables
 func InitEnv() {
 	ReconFreqErr, _ = time.ParseDuration(os.Getenv("RECONCILIATION_FREQUENCY_ON_ERROR"))
 	ReconFreq, _ = time.ParseDuration(os.Getenv("RECONCILIATION_FREQUENCY"))
