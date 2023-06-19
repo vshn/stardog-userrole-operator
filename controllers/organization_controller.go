@@ -109,6 +109,7 @@ func (r *OrganizationReconciler) reconcileOrganization(or *OrganizationReconcili
 	}
 
 	or.resource.Status.StardogInstanceRefs = or.database.Status.StardogInstanceRefs
+	or.resource.Status.NamedGraphs = or.resource.Spec.NamedGraphs
 	rc.SetStatusCondition(createStatusConditionReady(true, "Synchronized"))
 	return ctrl.Result{Requeue: true, RequeueAfter: ReconFreq}, r.updateStatus(or)
 }
@@ -238,6 +239,20 @@ func (r *OrganizationReconciler) sync(or *OrganizationReconciliation, instance s
 	if err != nil {
 		r.Log.Error(err, "adding permission to role failed", "role", userRoleName, "permission", perms)
 		return err
+	}
+
+	// Remove permissions in case name graphs have been removed
+	for _, graph := range org.Status.NamedGraphs {
+		if !contains(org.Spec.NamedGraphs, graph) {
+			perm := roles_permissions.NewRemoveRolePermissionParams().WithRole(userRoleName)
+			ng := getFullNamedGraph(org.Spec.Name, database.Spec.NamedGraphPrefix, graph)
+			for _, p := range getGraphPermissionForNameGraphs(ng, dbName) {
+				pResp, err := stardogClient.RolesPermissions.RemoveRolePermission(perm.WithPermission(&p), auth)
+				if err != nil || !pResp.IsSuccess() {
+					return fmt.Errorf("cannot remove permission %+v for graph %s: %v", p, ng, err)
+				}
+			}
+		}
 	}
 
 	// assign roles to users
@@ -419,7 +434,7 @@ func getUserAndRoleName(dbName, orgName string) string {
 func getGraphPermissions(org *stardogv1beta1.Organization, namedGraphPrefix, dbName string) []models.Permission {
 	perms := make([]models.Permission, 0)
 	for _, ng := range org.Spec.NamedGraphs {
-		fullNameNG := strings.TrimSuffix(namedGraphPrefix, "/") + "/" + org.Spec.Name + "/" + ng
+		fullNameNG := getFullNamedGraph(org.Spec.Name, namedGraphPrefix, ng)
 		ngPerm := []models.Permission{
 			{
 				Action:       pointer.String("READ"),
@@ -435,6 +450,25 @@ func getGraphPermissions(org *stardogv1beta1.Organization, namedGraphPrefix, dbN
 		perms = append(perms, ngPerm...)
 	}
 	return perms
+}
+
+func getFullNamedGraph(orgName, namedGraphPrefix string, ng string) string {
+	return strings.TrimSuffix(namedGraphPrefix, "/") + "/" + orgName + "/" + ng
+}
+
+func getGraphPermissionForNameGraphs(namedGraph, dbName string) []models.Permission {
+	return []models.Permission{
+		{
+			Action:       pointer.String("READ"),
+			Resource:     []string{namedGraph, dbName},
+			ResourceType: pointer.String("named-graph"),
+		},
+		{
+			Action:       pointer.String("WRITE"),
+			Resource:     []string{namedGraph, dbName},
+			ResourceType: pointer.String("named-graph"),
+		},
+	}
 }
 
 func getOrganizationPerms(database *stardogv1beta1.Database, org *stardogv1beta1.Organization, dbName string) []models.Permission {
