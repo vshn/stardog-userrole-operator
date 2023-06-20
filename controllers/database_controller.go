@@ -306,12 +306,9 @@ func (r *DatabaseReconciler) validateSpecification(ctx context.Context, database
 		}
 	}
 
-	// If status is set for database name then we treat it as an update (2 - n object reconciliation)
-	if status.DatabaseName != "" {
-		spec.NamedGraphPrefix = status.NamedGraphPrefix
-		spec.DatabaseName = status.DatabaseName
-		spec.Options = status.Options
-	}
+	spec.NamedGraphPrefix = status.NamedGraphPrefix
+	spec.DatabaseName = status.DatabaseName
+	spec.Options = status.Options
 
 	return nil
 }
@@ -410,10 +407,18 @@ func (r *DatabaseReconciler) sync(dr *DatabaseReconciliation, instance stardogv1
 	}
 
 	// assign roles to users
+	err = assignDefaultRoles(stardogClient, auth, readName, writeName)
+	if err != nil {
+		r.Log.Error(err, "error assigning roles to users")
+		return err
+	}
+	return nil
+}
+
+func assignDefaultRoles(stardogClient *stardog.Stardog, auth runtime.ClientAuthInfoWriter, readName, writeName string) error {
 	readUserRolesResp, err := stardogClient.UsersRoles.ListUserRoles(users_roles.NewListUserRolesParams().WithUser(readName), auth)
 	if err != nil || !readUserRolesResp.IsSuccess() {
-		r.Log.Error(err, "error getting user roles", "user", readName)
-		return err
+		return fmt.Errorf("error getting user roles for user %s: %v", readName, err)
 	}
 
 	if !slices.Contains(readUserRolesResp.Payload.Roles, readName) {
@@ -422,15 +427,13 @@ func (r *DatabaseReconciler) sync(dr *DatabaseReconciliation, instance stardogv1
 			WithRole(&models.Rolename{Rolename: &readName})
 		roleResp, err := stardogClient.UsersRoles.AddRole(params, auth)
 		if err != nil || !roleResp.IsSuccess() {
-			r.Log.Error(err, "error assigning role to user", "user", readName, "role", readName)
-			return err
+			return fmt.Errorf("error assigning role %s to user %s: %v", readName, readName, err)
 		}
 	}
 
 	writeUserRolesResp, err := stardogClient.UsersRoles.ListUserRoles(users_roles.NewListUserRolesParams().WithUser(writeName), auth)
 	if err != nil || !writeUserRolesResp.IsSuccess() {
-		r.Log.Error(err, "error getting user roles", "user", writeName)
-		return err
+		return fmt.Errorf("error getting user roles for user %s: %v", writeName, err)
 	}
 
 	if !slices.Contains(writeUserRolesResp.Payload.Roles, readName) {
@@ -439,8 +442,7 @@ func (r *DatabaseReconciler) sync(dr *DatabaseReconciliation, instance stardogv1
 			WithRole(&models.Rolename{Rolename: &readName})
 		roleResp, err := stardogClient.UsersRoles.AddRole(params, auth)
 		if err != nil || !roleResp.IsSuccess() {
-			r.Log.Error(err, "error assigning role to user", "user", writeName, "role", readName)
-			return err
+			return fmt.Errorf("error assigning role %s to user %s: %v", readName, writeName, err)
 		}
 	}
 
@@ -450,8 +452,7 @@ func (r *DatabaseReconciler) sync(dr *DatabaseReconciliation, instance stardogv1
 			WithRole(&models.Rolename{Rolename: &writeName})
 		roleResp, err := stardogClient.UsersRoles.AddRole(params, auth)
 		if err != nil || !roleResp.IsSuccess() {
-			r.Log.Error(err, "error assigning role to user", "user", writeName, "role", writeName)
-			return err
+			return fmt.Errorf("error assigning role %s to user %s: %v", writeName, writeName, err)
 		}
 	}
 	return nil

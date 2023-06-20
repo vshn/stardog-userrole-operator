@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/go-logr/logr"
+	"github.com/go-openapi/runtime"
 	"github.com/sethvargo/go-password/password"
 	stardogv1alpha1 "github.com/vshn/stardog-userrole-operator/api/v1alpha1"
 	stardogv1beta1 "github.com/vshn/stardog-userrole-operator/api/v1beta1"
@@ -167,11 +168,8 @@ func (r *OrganizationReconciler) validateSpecification(ctx context.Context, orga
 		}
 	}
 
-	// If status is set for database name then we treat it as an update (2 - n object reconciliation)
-	if status.Name != "" {
-		spec.Name = status.Name
-		spec.DatabaseRef = status.DatabaseRef
-	}
+	spec.Name = status.Name
+	spec.DatabaseRef = status.DatabaseRef
 
 	return nil
 }
@@ -234,7 +232,7 @@ func (r *OrganizationReconciler) sync(or *OrganizationReconciliation, instance s
 	}
 	err = createDefaultRolesForDB(stardogClient, auth, rolenames)
 	if err != nil {
-		r.Log.Error(err, "error creating roles", "roles", rolenames)
+		r.Log.Error(err, "Cannot create roles", "roles", rolenames)
 		return err
 	}
 
@@ -242,29 +240,30 @@ func (r *OrganizationReconciler) sync(or *OrganizationReconciliation, instance s
 	perms := getOrganizationPerms(database, org, dbName)
 	err = createDefaultPermissions(stardogClient, auth, userRoleName, perms)
 	if err != nil {
-		r.Log.Error(err, "adding permission to role failed", "role", userRoleName, "permission", perms)
+		r.Log.Error(err, "Adding permission to role failed", "role", userRoleName, "permission", perms)
 		return err
 	}
 
 	// Remove permissions in case name graphs have been removed
-	for _, graph := range org.Status.NamedGraphs {
-		if !contains(org.Spec.NamedGraphs, graph) {
-			perm := roles_permissions.NewRemoveRolePermissionParams().WithRole(userRoleName)
-			ng := getFullNamedGraph(org.Spec.Name, database.Spec.NamedGraphPrefix, graph)
-			for _, p := range getGraphPermissionForNameGraphs(ng, dbName) {
-				pResp, err := stardogClient.RolesPermissions.RemoveRolePermission(perm.WithPermission(&p), auth)
-				if err != nil || !pResp.IsSuccess() {
-					return fmt.Errorf("cannot remove permission %+v for graph %s: %v", p, ng, err)
-				}
-			}
-		}
+	err = removePermissions(org, database, stardogClient, auth, userRoleName)
+	if err != nil {
+		r.Log.Error(err, "Cannot remove permissions")
+		return err
 	}
 
-	// assign roles to users
+	// assign role to user
+	err = assignDefaultRole(stardogClient, auth, userRoleName)
+	if err != nil {
+		r.Log.Error(err, "Cannot assign defaultRoles", "user", userRoleName)
+		return err
+	}
+	return nil
+}
+
+func assignDefaultRole(stardogClient *stardog.Stardog, auth runtime.ClientAuthInfoWriter, userRoleName string) error {
 	readUserRolesResp, err := stardogClient.UsersRoles.ListUserRoles(users_roles.NewListUserRolesParams().WithUser(userRoleName), auth)
 	if err != nil || !readUserRolesResp.IsSuccess() {
-		r.Log.Error(err, "error getting user roles", "user", userRoleName)
-		return err
+		return fmt.Errorf("error getting user roles for user %s; %v", userRoleName, err)
 	}
 
 	if !slices.Contains(readUserRolesResp.Payload.Roles, userRoleName) {
@@ -273,8 +272,23 @@ func (r *OrganizationReconciler) sync(or *OrganizationReconciliation, instance s
 			WithRole(&models.Rolename{Rolename: &userRoleName})
 		roleResp, err := stardogClient.UsersRoles.AddRole(params, auth)
 		if err != nil || !roleResp.IsSuccess() {
-			r.Log.Error(err, "error assigning role to user", "user", userRoleName, "role", userRoleName)
-			return err
+			return fmt.Errorf("error assigning role %s to user %s: %v", userRoleName, userRoleName, err)
+		}
+	}
+	return nil
+}
+
+func removePermissions(org *stardogv1beta1.Organization, database *stardogv1beta1.Database, stardogClient *stardog.Stardog, auth runtime.ClientAuthInfoWriter, userRoleName string) error {
+	for _, graph := range org.Status.NamedGraphs {
+		if !contains(org.Spec.NamedGraphs, graph) {
+			perm := roles_permissions.NewRemoveRolePermissionParams().WithRole(userRoleName)
+			ng := getFullNamedGraph(org.Spec.Name, database.Spec.NamedGraphPrefix, graph)
+			for _, p := range getGraphPermissionForNameGraphs(ng, database.Spec.DatabaseName) {
+				pResp, err := stardogClient.RolesPermissions.RemoveRolePermission(perm.WithPermission(&p), auth)
+				if err != nil || !pResp.IsSuccess() {
+					return fmt.Errorf("cannot remove permission %+v for graph %s: %v", p, ng, err)
+				}
+			}
 		}
 	}
 	return nil
