@@ -1,5 +1,3 @@
-//go:build exclude
-
 package controllers
 
 import (
@@ -14,6 +12,69 @@ import (
 	"testing"
 	"time"
 )
+
+func Test_disabledEnvironments(t *testing.T) {
+	tests := []struct {
+		name       string
+		user       StardogUser
+		setEnv     func()
+		expectBool bool
+	}{
+		{
+			name: "GivenNoEnvVariableAndSecret_ThenReturnFalse",
+			user: StardogUser{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "stardog-test"},
+			},
+			setEnv:     func() {},
+			expectBool: false,
+		},
+		{
+			name: "GivenWrongEnvVariableAndSecret_ThenReturnFalse",
+			user: StardogUser{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "stardog-test"},
+			},
+			setEnv: func() {
+				os.Setenv("DISABLED_ENVIRONMENTS", "stardog-non.exists")
+			},
+			expectBool: false,
+		},
+		{
+			name: "GivenOneMatchingEnvVariableAndSecret_ThenReturnTrue",
+			user: StardogUser{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "stardog-test"},
+			},
+			setEnv: func() {
+				os.Setenv("DISABLED_ENVIRONMENTS", "stardog-test")
+			},
+			expectBool: true,
+		},
+		{
+			name: "GivenMoreEnvsWithOneMatchingEnvVariableAndSecret_ThenReturnTrue",
+			user: StardogUser{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "stardog-test"},
+			},
+			setEnv: func() {
+				os.Setenv("DISABLED_ENVIRONMENTS", "stardog-test;stardog-prod")
+			},
+			expectBool: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+
+			// GIVEN
+			tt.setEnv()
+			InitEnv()
+
+			// WHEN
+			disabled := environmentDisabled(&tt.user)
+
+			// THEN
+			assert.Equal(t, tt.expectBool, disabled)
+			os.Unsetenv("DISABLED_ENVIRONMENTS")
+		})
+	}
+}
 
 func Test_getData(t *testing.T) {
 

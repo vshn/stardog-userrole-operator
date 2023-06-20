@@ -11,6 +11,7 @@ import (
 	"github.com/vshn/stardog-userrole-operator/stardogrest/models"
 	"os"
 	"reflect"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"strings"
 	"time"
 
@@ -21,14 +22,16 @@ import (
 )
 
 var (
-	ReconFreqErr = time.Second * 30
-	ReconFreq    = time.Duration(0)
+	ReconFreqErr         = time.Second * 30
+	ReconFreq            = time.Duration(0)
+	disabledEnvironments = ""
 )
 
 // InitEnv initialize env variables
 func InitEnv() {
 	ReconFreqErr, _ = time.ParseDuration(os.Getenv("RECONCILIATION_FREQUENCY_ON_ERROR"))
 	ReconFreq, _ = time.ParseDuration(os.Getenv("RECONCILIATION_FREQUENCY"))
+	disabledEnvironments = os.Getenv("DISABLED_ENVIRONMENTS")
 	if ReconFreq < 0 || ReconFreqErr < 0 {
 		ReconFreq = 0
 		ReconFreqErr = 0
@@ -240,4 +243,16 @@ func NotFound(err error) bool {
 		errType == reflect.TypeOf(users.NewRemoveUserNotFound()).String() ||
 		errType == reflect.TypeOf(users_permissions.NewRemoveUserPermissionNotFound()).String() ||
 		errType == reflect.TypeOf(db.NewGetDBSizeNotFound()).String()
+}
+
+func environmentDisabled(object client.Object) bool {
+	if disabledEnvironments == "" {
+		return false
+	}
+	for _, env := range strings.Split(disabledEnvironments, ";") {
+		if env == object.GetNamespace() {
+			return true
+		}
+	}
+	return false
 }
