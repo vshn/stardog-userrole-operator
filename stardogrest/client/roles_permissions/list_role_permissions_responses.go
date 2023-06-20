@@ -86,11 +86,11 @@ func (o *ListRolePermissionsOK) Code() int {
 }
 
 func (o *ListRolePermissionsOK) Error() string {
-	return fmt.Sprintf("[GET /permissions/role/{role}][%d] listRolePermissionsOK  %+v", 200, o.Payload)
+	return fmt.Sprintf("[GET /admin/permissions/role/{role}][%d] listRolePermissionsOK  %+v", 200, o.Payload)
 }
 
 func (o *ListRolePermissionsOK) String() string {
-	return fmt.Sprintf("[GET /permissions/role/{role}][%d] listRolePermissionsOK  %+v", 200, o.Payload)
+	return fmt.Sprintf("[GET /admin/permissions/role/{role}][%d] listRolePermissionsOK  %+v", 200, o.Payload)
 }
 
 func (o *ListRolePermissionsOK) GetPayload() *models.Permissions {
@@ -158,11 +158,11 @@ func (o *ListRolePermissionsDefault) Code() int {
 }
 
 func (o *ListRolePermissionsDefault) Error() string {
-	return fmt.Sprintf("[GET /permissions/role/{role}][%d] listRolePermissions default  %+v", o._statusCode, o.Payload)
+	return fmt.Sprintf("[GET /admin/permissions/role/{role}][%d] listRolePermissions default  %+v", o._statusCode, o.Payload)
 }
 
 func (o *ListRolePermissionsDefault) String() string {
-	return fmt.Sprintf("[GET /permissions/role/{role}][%d] listRolePermissions default  %+v", o._statusCode, o.Payload)
+	return fmt.Sprintf("[GET /admin/permissions/role/{role}][%d] listRolePermissions default  %+v", o._statusCode, o.Payload)
 }
 
 func (o *ListRolePermissionsDefault) GetPayload() *models.Error {

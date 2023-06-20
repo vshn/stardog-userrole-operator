@@ -50,7 +50,7 @@ func (a *Client) AddUserPermission(params *AddUserPermissionParams, authInfo run
 	op := &runtime.ClientOperation{
 		ID:                 "addUserPermission",
 		Method:             "PUT",
-		PathPattern:        "/permissions/user/{user}",
+		PathPattern:        "/admin/permissions/user/{user}",
 		ProducesMediaTypes: []string{"application/json"},
 		ConsumesMediaTypes: []string{"application/json"},
 		Schemes:            []string{"http"},
@@ -88,7 +88,7 @@ func (a *Client) ListEffectivePermissions(params *ListEffectivePermissionsParams
 	op := &runtime.ClientOperation{
 		ID:                 "listEffectivePermissions",
 		Method:             "GET",
-		PathPattern:        "/permissions/effective/user/{user}",
+		PathPattern:        "/admin/permissions/effective/user/{user}",
 		ProducesMediaTypes: []string{"application/json"},
 		ConsumesMediaTypes: []string{"application/json"},
 		Schemes:            []string{"http"},
@@ -126,7 +126,7 @@ func (a *Client) ListUserPermissions(params *ListUserPermissionsParams, authInfo
 	op := &runtime.ClientOperation{
 		ID:                 "listUserPermissions",
 		Method:             "GET",
-		PathPattern:        "/permissions/user/{user}",
+		PathPattern:        "/admin/permissions/user/{user}",
 		ProducesMediaTypes: []string{"application/json"},
 		ConsumesMediaTypes: []string{"application/json"},
 		Schemes:            []string{"http"},
@@ -164,7 +164,7 @@ func (a *Client) RemoveUserPermission(params *RemoveUserPermissionParams, authIn
 	op := &runtime.ClientOperation{
 		ID:                 "removeUserPermission",
 		Method:             "POST",
-		PathPattern:        "/permissions/user/{user}/delete",
+		PathPattern:        "/admin/permissions/user/{user}/delete",
 		ProducesMediaTypes: []string{"application/json"},
 		ConsumesMediaTypes: []string{"application/json"},
 		Schemes:            []string{"http"},

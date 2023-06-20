@@ -14,21 +14,21 @@ import (
 	"github.com/go-openapi/validate"
 )
 
-// Superuser superuser
+// DatabaseSize database size
 //
-// swagger:model Superuser
-type Superuser struct {
+// swagger:model DatabaseSize
+type DatabaseSize struct {
 
-	// superuser
+	// size
 	// Required: true
-	Superuser bool `json:"superuser"`
+	Size *string `json:"size"`
 }
 
-// Validate validates this superuser
-func (m *Superuser) Validate(formats strfmt.Registry) error {
+// Validate validates this database size
+func (m *DatabaseSize) Validate(formats strfmt.Registry) error {
 	var res []error
 
-	if err := m.validateSuperuser(formats); err != nil {
+	if err := m.validateSize(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -38,22 +38,22 @@ func (m *Superuser) Validate(formats strfmt.Registry) error {
 	return nil
 }
 
-func (m *Superuser) validateSuperuser(formats strfmt.Registry) error {
+func (m *DatabaseSize) validateSize(formats strfmt.Registry) error {
 
-	if err := validate.Required("superuser", "body", bool(m.Superuser)); err != nil {
+	if err := validate.Required("size", "body", m.Size); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-// ContextValidate validates this superuser based on context it is used
-func (m *Superuser) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+// ContextValidate validates this database size based on context it is used
+func (m *DatabaseSize) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	return nil
 }
 
 // MarshalBinary interface implementation
-func (m *Superuser) MarshalBinary() ([]byte, error) {
+func (m *DatabaseSize) MarshalBinary() ([]byte, error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -61,8 +61,8 @@ func (m *Superuser) MarshalBinary() ([]byte, error) {
 }
 
 // UnmarshalBinary interface implementation
-func (m *Superuser) UnmarshalBinary(b []byte) error {
-	var res Superuser
+func (m *DatabaseSize) UnmarshalBinary(b []byte) error {
+	var res DatabaseSize
 	if err := swag.ReadJSON(b, &res); err != nil {
 		return err
 	}

@@ -52,7 +52,7 @@ func (a *Client) AddRole(params *AddRoleParams, authInfo runtime.ClientAuthInfoW
 	op := &runtime.ClientOperation{
 		ID:                 "addRole",
 		Method:             "POST",
-		PathPattern:        "/users/{user}/roles",
+		PathPattern:        "/admin/users/{user}/roles",
 		ProducesMediaTypes: []string{"application/json"},
 		ConsumesMediaTypes: []string{"application/json"},
 		Schemes:            []string{"http"},
@@ -90,7 +90,7 @@ func (a *Client) ListRoleUsers(params *ListRoleUsersParams, authInfo runtime.Cli
 	op := &runtime.ClientOperation{
 		ID:                 "listRoleUsers",
 		Method:             "GET",
-		PathPattern:        "/roles/{role}/users",
+		PathPattern:        "/admin/roles/{role}/users",
 		ProducesMediaTypes: []string{"application/json"},
 		ConsumesMediaTypes: []string{"application/json"},
 		Schemes:            []string{"http"},
@@ -128,7 +128,7 @@ func (a *Client) ListUserRoles(params *ListUserRolesParams, authInfo runtime.Cli
 	op := &runtime.ClientOperation{
 		ID:                 "listUserRoles",
 		Method:             "GET",
-		PathPattern:        "/users/{user}/roles",
+		PathPattern:        "/admin/users/{user}/roles",
 		ProducesMediaTypes: []string{"application/json"},
 		ConsumesMediaTypes: []string{"application/json"},
 		Schemes:            []string{"http"},
@@ -166,7 +166,7 @@ func (a *Client) PutRoles(params *PutRolesParams, authInfo runtime.ClientAuthInf
 	op := &runtime.ClientOperation{
 		ID:                 "putRoles",
 		Method:             "PUT",
-		PathPattern:        "/users/{user}/roles",
+		PathPattern:        "/admin/users/{user}/roles",
 		ProducesMediaTypes: []string{"application/json"},
 		ConsumesMediaTypes: []string{"application/json"},
 		Schemes:            []string{"http"},
@@ -204,7 +204,7 @@ func (a *Client) RemoveRoleOfUser(params *RemoveRoleOfUserParams, authInfo runti
 	op := &runtime.ClientOperation{
 		ID:                 "removeRoleOfUser",
 		Method:             "DELETE",
-		PathPattern:        "/users/{user}/roles/{role}",
+		PathPattern:        "/admin/users/{user}/roles/{role}",
 		ProducesMediaTypes: []string{"application/json"},
 		ConsumesMediaTypes: []string{"application/json"},
 		Schemes:            []string{"http"},

@@ -77,7 +77,6 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "StardogInstance")
 		os.Exit(1)
 	}
-
 	if err = (&controllers.DatabaseReconciler{
 		Client: mgr.GetClient(),
 		Log:    ctrl.Log.WithName("controllers").WithName("Database"),
@@ -86,22 +85,15 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "Database")
 		os.Exit(1)
 	}
-	if err = (&controllers.InstanceReconciler{
+	if err = (&controllers.OrganizationReconciler{
 		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("Instance"),
+		Log:    ctrl.Log.WithName("controllers").WithName("Organization"),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Instance")
+		setupLog.Error(err, "unable to create controller", "controller", "Organization")
 		os.Exit(1)
 	}
-	if err = (&controllers.DatabaseSetReconciler{
-		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("DatabaseSet"),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "DatabaseSet")
-		os.Exit(1)
-	}
+
 	// +kubebuilder:scaffold:builder
 
 	controllers.InitEnv()

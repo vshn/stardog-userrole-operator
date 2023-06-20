@@ -85,11 +85,11 @@ func (o *CreateRoleCreated) Code() int {
 }
 
 func (o *CreateRoleCreated) Error() string {
-	return fmt.Sprintf("[POST /roles][%d] createRoleCreated ", 201)
+	return fmt.Sprintf("[POST /admin/roles][%d] createRoleCreated ", 201)
 }
 
 func (o *CreateRoleCreated) String() string {
-	return fmt.Sprintf("[POST /roles][%d] createRoleCreated ", 201)
+	return fmt.Sprintf("[POST /admin/roles][%d] createRoleCreated ", 201)
 }
 
 func (o *CreateRoleCreated) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
@@ -146,11 +146,11 @@ func (o *CreateRoleDefault) Code() int {
 }
 
 func (o *CreateRoleDefault) Error() string {
-	return fmt.Sprintf("[POST /roles][%d] createRole default  %+v", o._statusCode, o.Payload)
+	return fmt.Sprintf("[POST /admin/roles][%d] createRole default  %+v", o._statusCode, o.Payload)
 }
 
 func (o *CreateRoleDefault) String() string {
-	return fmt.Sprintf("[POST /roles][%d] createRole default  %+v", o._statusCode, o.Payload)
+	return fmt.Sprintf("[POST /admin/roles][%d] createRole default  %+v", o._statusCode, o.Payload)
 }
 
 func (o *CreateRoleDefault) GetPayload() *models.Error {

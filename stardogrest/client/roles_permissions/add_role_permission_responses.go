@@ -85,11 +85,11 @@ func (o *AddRolePermissionCreated) Code() int {
 }
 
 func (o *AddRolePermissionCreated) Error() string {
-	return fmt.Sprintf("[PUT /permissions/role/{role}][%d] addRolePermissionCreated ", 201)
+	return fmt.Sprintf("[PUT /admin/permissions/role/{role}][%d] addRolePermissionCreated ", 201)
 }
 
 func (o *AddRolePermissionCreated) String() string {
-	return fmt.Sprintf("[PUT /permissions/role/{role}][%d] addRolePermissionCreated ", 201)
+	return fmt.Sprintf("[PUT /admin/permissions/role/{role}][%d] addRolePermissionCreated ", 201)
 }
 
 func (o *AddRolePermissionCreated) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
@@ -146,11 +146,11 @@ func (o *AddRolePermissionDefault) Code() int {
 }
 
 func (o *AddRolePermissionDefault) Error() string {
-	return fmt.Sprintf("[PUT /permissions/role/{role}][%d] addRolePermission default  %+v", o._statusCode, o.Payload)
+	return fmt.Sprintf("[PUT /admin/permissions/role/{role}][%d] addRolePermission default  %+v", o._statusCode, o.Payload)
 }
 
 func (o *AddRolePermissionDefault) String() string {
-	return fmt.Sprintf("[PUT /permissions/role/{role}][%d] addRolePermission default  %+v", o._statusCode, o.Payload)
+	return fmt.Sprintf("[PUT /admin/permissions/role/{role}][%d] addRolePermission default  %+v", o._statusCode, o.Payload)
 }
 
 func (o *AddRolePermissionDefault) GetPayload() *models.Error {

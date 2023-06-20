@@ -25,7 +25,7 @@ spec:
       containers:
       - args:
         - --enable-leader-election
-        image: vshn/stardog-userrole-operator:latest
+        image: image # to be updated
         name: manager
         resources:
           limits:

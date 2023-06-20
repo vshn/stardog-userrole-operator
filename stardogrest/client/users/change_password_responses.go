@@ -85,11 +85,11 @@ func (o *ChangePasswordOK) Code() int {
 }
 
 func (o *ChangePasswordOK) Error() string {
-	return fmt.Sprintf("[PUT /users/{user}/pwd][%d] changePasswordOK ", 200)
+	return fmt.Sprintf("[PUT /admin/users/{user}/pwd][%d] changePasswordOK ", 200)
 }
 
 func (o *ChangePasswordOK) String() string {
-	return fmt.Sprintf("[PUT /users/{user}/pwd][%d] changePasswordOK ", 200)
+	return fmt.Sprintf("[PUT /admin/users/{user}/pwd][%d] changePasswordOK ", 200)
 }
 
 func (o *ChangePasswordOK) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
@@ -146,11 +146,11 @@ func (o *ChangePasswordDefault) Code() int {
 }
 
 func (o *ChangePasswordDefault) Error() string {
-	return fmt.Sprintf("[PUT /users/{user}/pwd][%d] changePassword default  %+v", o._statusCode, o.Payload)
+	return fmt.Sprintf("[PUT /admin/users/{user}/pwd][%d] changePassword default  %+v", o._statusCode, o.Payload)
 }
 
 func (o *ChangePasswordDefault) String() string {
-	return fmt.Sprintf("[PUT /users/{user}/pwd][%d] changePassword default  %+v", o._statusCode, o.Payload)
+	return fmt.Sprintf("[PUT /admin/users/{user}/pwd][%d] changePassword default  %+v", o._statusCode, o.Payload)
 }
 
 func (o *ChangePasswordDefault) GetPayload() *models.Error {

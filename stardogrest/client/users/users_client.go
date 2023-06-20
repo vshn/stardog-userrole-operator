@@ -58,7 +58,7 @@ func (a *Client) ChangePassword(params *ChangePasswordParams, authInfo runtime.C
 	op := &runtime.ClientOperation{
 		ID:                 "changePassword",
 		Method:             "PUT",
-		PathPattern:        "/users/{user}/pwd",
+		PathPattern:        "/admin/users/{user}/pwd",
 		ProducesMediaTypes: []string{"application/json"},
 		ConsumesMediaTypes: []string{"application/json"},
 		Schemes:            []string{"http"},
@@ -96,7 +96,7 @@ func (a *Client) CreateUser(params *CreateUserParams, authInfo runtime.ClientAut
 	op := &runtime.ClientOperation{
 		ID:                 "createUser",
 		Method:             "POST",
-		PathPattern:        "/users",
+		PathPattern:        "/admin/users",
 		ProducesMediaTypes: []string{"application/json"},
 		ConsumesMediaTypes: []string{"application/json"},
 		Schemes:            []string{"http"},
@@ -134,7 +134,7 @@ func (a *Client) IsEnabled(params *IsEnabledParams, authInfo runtime.ClientAuthI
 	op := &runtime.ClientOperation{
 		ID:                 "isEnabled",
 		Method:             "GET",
-		PathPattern:        "/users/{user}/enabled",
+		PathPattern:        "/admin/users/{user}/enabled",
 		ProducesMediaTypes: []string{"application/json"},
 		ConsumesMediaTypes: []string{"application/json"},
 		Schemes:            []string{"http"},
@@ -172,7 +172,7 @@ func (a *Client) IsSuperuser(params *IsSuperuserParams, authInfo runtime.ClientA
 	op := &runtime.ClientOperation{
 		ID:                 "isSuperuser",
 		Method:             "GET",
-		PathPattern:        "/users/{user}/superuser",
+		PathPattern:        "/admin/users/{user}/superuser",
 		ProducesMediaTypes: []string{"application/json"},
 		ConsumesMediaTypes: []string{"application/json"},
 		Schemes:            []string{"http"},
@@ -210,7 +210,7 @@ func (a *Client) ListUsers(params *ListUsersParams, authInfo runtime.ClientAuthI
 	op := &runtime.ClientOperation{
 		ID:                 "listUsers",
 		Method:             "GET",
-		PathPattern:        "/users",
+		PathPattern:        "/admin/users",
 		ProducesMediaTypes: []string{"application/json"},
 		ConsumesMediaTypes: []string{"application/json"},
 		Schemes:            []string{"http"},
@@ -248,7 +248,7 @@ func (a *Client) RemoveUser(params *RemoveUserParams, authInfo runtime.ClientAut
 	op := &runtime.ClientOperation{
 		ID:                 "removeUser",
 		Method:             "DELETE",
-		PathPattern:        "/users/{user}",
+		PathPattern:        "/admin/users/{user}",
 		ProducesMediaTypes: []string{"application/json"},
 		ConsumesMediaTypes: []string{"application/json"},
 		Schemes:            []string{"http"},
@@ -286,7 +286,7 @@ func (a *Client) SetEnabled(params *SetEnabledParams, authInfo runtime.ClientAut
 	op := &runtime.ClientOperation{
 		ID:                 "setEnabled",
 		Method:             "PUT",
-		PathPattern:        "/users/{user}/enabled",
+		PathPattern:        "/admin/users/{user}/enabled",
 		ProducesMediaTypes: []string{"application/json"},
 		ConsumesMediaTypes: []string{"application/json"},
 		Schemes:            []string{"http"},
@@ -324,7 +324,7 @@ func (a *Client) ValidateUser(params *ValidateUserParams, authInfo runtime.Clien
 	op := &runtime.ClientOperation{
 		ID:                 "validateUser",
 		Method:             "GET",
-		PathPattern:        "/users/valid",
+		PathPattern:        "/admin/users/valid",
 		ProducesMediaTypes: []string{"application/json"},
 		ConsumesMediaTypes: []string{"application/json"},
 		Schemes:            []string{"http"},

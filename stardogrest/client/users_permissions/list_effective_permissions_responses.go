@@ -86,11 +86,11 @@ func (o *ListEffectivePermissionsOK) Code() int {
 }
 
 func (o *ListEffectivePermissionsOK) Error() string {
-	return fmt.Sprintf("[GET /permissions/effective/user/{user}][%d] listEffectivePermissionsOK  %+v", 200, o.Payload)
+	return fmt.Sprintf("[GET /admin/permissions/effective/user/{user}][%d] listEffectivePermissionsOK  %+v", 200, o.Payload)
 }
 
 func (o *ListEffectivePermissionsOK) String() string {
-	return fmt.Sprintf("[GET /permissions/effective/user/{user}][%d] listEffectivePermissionsOK  %+v", 200, o.Payload)
+	return fmt.Sprintf("[GET /admin/permissions/effective/user/{user}][%d] listEffectivePermissionsOK  %+v", 200, o.Payload)
 }
 
 func (o *ListEffectivePermissionsOK) GetPayload() *models.Permissions {
@@ -158,11 +158,11 @@ func (o *ListEffectivePermissionsDefault) Code() int {
 }
 
 func (o *ListEffectivePermissionsDefault) Error() string {
-	return fmt.Sprintf("[GET /permissions/effective/user/{user}][%d] listEffectivePermissions default  %+v", o._statusCode, o.Payload)
+	return fmt.Sprintf("[GET /admin/permissions/effective/user/{user}][%d] listEffectivePermissions default  %+v", o._statusCode, o.Payload)
 }
 
 func (o *ListEffectivePermissionsDefault) String() string {
-	return fmt.Sprintf("[GET /permissions/effective/user/{user}][%d] listEffectivePermissions default  %+v", o._statusCode, o.Payload)
+	return fmt.Sprintf("[GET /admin/permissions/effective/user/{user}][%d] listEffectivePermissions default  %+v", o._statusCode, o.Payload)
 }
 
 func (o *ListEffectivePermissionsDefault) GetPayload() *models.Error {

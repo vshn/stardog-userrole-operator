@@ -85,11 +85,11 @@ func (o *CreateUserCreated) Code() int {
 }
 
 func (o *CreateUserCreated) Error() string {
-	return fmt.Sprintf("[POST /users][%d] createUserCreated ", 201)
+	return fmt.Sprintf("[POST /admin/users][%d] createUserCreated ", 201)
 }
 
 func (o *CreateUserCreated) String() string {
-	return fmt.Sprintf("[POST /users][%d] createUserCreated ", 201)
+	return fmt.Sprintf("[POST /admin/users][%d] createUserCreated ", 201)
 }
 
 func (o *CreateUserCreated) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
@@ -146,11 +146,11 @@ func (o *CreateUserDefault) Code() int {
 }
 
 func (o *CreateUserDefault) Error() string {
-	return fmt.Sprintf("[POST /users][%d] createUser default  %+v", o._statusCode, o.Payload)
+	return fmt.Sprintf("[POST /admin/users][%d] createUser default  %+v", o._statusCode, o.Payload)
 }
 
 func (o *CreateUserDefault) String() string {
-	return fmt.Sprintf("[POST /users][%d] createUser default  %+v", o._statusCode, o.Payload)
+	return fmt.Sprintf("[POST /admin/users][%d] createUser default  %+v", o._statusCode, o.Payload)
 }
 
 func (o *CreateUserDefault) GetPayload() *models.Error {

@@ -86,11 +86,11 @@ func (o *ListUsersOK) Code() int {
 }
 
 func (o *ListUsersOK) Error() string {
-	return fmt.Sprintf("[GET /users][%d] listUsersOK  %+v", 200, o.Payload)
+	return fmt.Sprintf("[GET /admin/users][%d] listUsersOK  %+v", 200, o.Payload)
 }
 
 func (o *ListUsersOK) String() string {
-	return fmt.Sprintf("[GET /users][%d] listUsersOK  %+v", 200, o.Payload)
+	return fmt.Sprintf("[GET /admin/users][%d] listUsersOK  %+v", 200, o.Payload)
 }
 
 func (o *ListUsersOK) GetPayload() *models.Users {
@@ -158,11 +158,11 @@ func (o *ListUsersDefault) Code() int {
 }
 
 func (o *ListUsersDefault) Error() string {
-	return fmt.Sprintf("[GET /users][%d] listUsers default  %+v", o._statusCode, o.Payload)
+	return fmt.Sprintf("[GET /admin/users][%d] listUsers default  %+v", o._statusCode, o.Payload)
 }
 
 func (o *ListUsersDefault) String() string {
-	return fmt.Sprintf("[GET /users][%d] listUsers default  %+v", o._statusCode, o.Payload)
+	return fmt.Sprintf("[GET /admin/users][%d] listUsers default  %+v", o._statusCode, o.Payload)
 }
 
 func (o *ListUsersDefault) GetPayload() *models.Error {

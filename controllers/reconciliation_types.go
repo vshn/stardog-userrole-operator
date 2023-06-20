@@ -6,6 +6,7 @@ import (
 	"github.com/go-openapi/runtime"
 	auth "github.com/go-openapi/runtime/client"
 	httptransport "github.com/go-openapi/runtime/client"
+	"github.com/vshn/stardog-userrole-operator/api/v1beta1"
 	stardog "github.com/vshn/stardog-userrole-operator/stardogrest/client"
 	"net/url"
 
@@ -20,6 +21,17 @@ type ReconciliationContext struct {
 	conditions    map[StardogConditionType]StardogCondition
 	stardogClient *stardog.Stardog
 	namespace     string
+}
+
+type OrganizationReconciliation struct {
+	database              *v1beta1.Database
+	resource              *v1beta1.Organization
+	reconciliationContext *ReconciliationContext
+}
+
+type DatabaseReconciliation struct {
+	resource              *v1beta1.Database
+	reconciliationContext *ReconciliationContext
 }
 
 type StardogInstanceReconciliation struct {
@@ -68,12 +80,13 @@ func (rc *ReconciliationContext) initStardogClient(kubeClient client.Client, sta
 	return auth.BasicAuth(adminUsername, adminPassword), nil
 }
 
-func (rc *ReconciliationContext) initStardogClientFromRef(kubeClient client.Client, stardogInstanceRef string) (runtime.ClientAuthInfoWriter, error) {
+func (rc *ReconciliationContext) initStardogClientFromRef(kubeClient client.Client, instance v1beta1.StardogInstanceRef) (runtime.ClientAuthInfoWriter, error) {
 	stardogInstance := &StardogInstance{}
-	err := kubeClient.Get(rc.context, types.NamespacedName{Namespace: rc.namespace, Name: stardogInstanceRef}, stardogInstance)
+	err := kubeClient.Get(rc.context, types.NamespacedName{Namespace: instance.Namespace, Name: instance.Name}, stardogInstance)
 	if err != nil {
-		return nil, fmt.Errorf("cannot retrieve stardogInstanceRef %s/%s: %v", rc.namespace, stardogInstanceRef, err)
+		return nil, fmt.Errorf("cannot retrieve stardogInstanceRef %s/%s: %v", instance.Namespace, instance.Name, err)
 	}
+	rc.namespace = stardogInstance.Namespace
 	return rc.initStardogClient(kubeClient, *stardogInstance)
 }
 

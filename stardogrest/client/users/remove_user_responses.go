@@ -29,6 +29,12 @@ func (o *RemoveUserReader) ReadResponse(response runtime.ClientResponse, consume
 			return nil, err
 		}
 		return result, nil
+	case 404:
+		result := NewRemoveUserNotFound()
+		if err := result.readResponse(response, consumer, o.formats); err != nil {
+			return nil, err
+		}
+		return nil, result
 	default:
 		result := NewRemoveUserDefault(response.Code())
 		if err := result.readResponse(response, consumer, o.formats); err != nil {
@@ -85,14 +91,82 @@ func (o *RemoveUserNoContent) Code() int {
 }
 
 func (o *RemoveUserNoContent) Error() string {
-	return fmt.Sprintf("[DELETE /users/{user}][%d] removeUserNoContent ", 204)
+	return fmt.Sprintf("[DELETE /admin/users/{user}][%d] removeUserNoContent ", 204)
 }
 
 func (o *RemoveUserNoContent) String() string {
-	return fmt.Sprintf("[DELETE /users/{user}][%d] removeUserNoContent ", 204)
+	return fmt.Sprintf("[DELETE /admin/users/{user}][%d] removeUserNoContent ", 204)
 }
 
 func (o *RemoveUserNoContent) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+
+	return nil
+}
+
+// NewRemoveUserNotFound creates a RemoveUserNotFound with default headers values
+func NewRemoveUserNotFound() *RemoveUserNotFound {
+	return &RemoveUserNotFound{}
+}
+
+/*
+RemoveUserNotFound describes a response with status code 404, with default header values.
+
+User does not exist
+*/
+type RemoveUserNotFound struct {
+	Payload *models.NotExists
+}
+
+// IsSuccess returns true when this remove user not found response has a 2xx status code
+func (o *RemoveUserNotFound) IsSuccess() bool {
+	return false
+}
+
+// IsRedirect returns true when this remove user not found response has a 3xx status code
+func (o *RemoveUserNotFound) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this remove user not found response has a 4xx status code
+func (o *RemoveUserNotFound) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this remove user not found response has a 5xx status code
+func (o *RemoveUserNotFound) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this remove user not found response a status code equal to that given
+func (o *RemoveUserNotFound) IsCode(code int) bool {
+	return code == 404
+}
+
+// Code gets the status code for the remove user not found response
+func (o *RemoveUserNotFound) Code() int {
+	return 404
+}
+
+func (o *RemoveUserNotFound) Error() string {
+	return fmt.Sprintf("[DELETE /admin/users/{user}][%d] removeUserNotFound  %+v", 404, o.Payload)
+}
+
+func (o *RemoveUserNotFound) String() string {
+	return fmt.Sprintf("[DELETE /admin/users/{user}][%d] removeUserNotFound  %+v", 404, o.Payload)
+}
+
+func (o *RemoveUserNotFound) GetPayload() *models.NotExists {
+	return o.Payload
+}
+
+func (o *RemoveUserNotFound) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+
+	o.Payload = new(models.NotExists)
+
+	// response payload
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+		return err
+	}
 
 	return nil
 }
@@ -146,11 +220,11 @@ func (o *RemoveUserDefault) Code() int {
 }
 
 func (o *RemoveUserDefault) Error() string {
-	return fmt.Sprintf("[DELETE /users/{user}][%d] removeUser default  %+v", o._statusCode, o.Payload)
+	return fmt.Sprintf("[DELETE /admin/users/{user}][%d] removeUser default  %+v", o._statusCode, o.Payload)
 }
 
 func (o *RemoveUserDefault) String() string {
-	return fmt.Sprintf("[DELETE /users/{user}][%d] removeUser default  %+v", o._statusCode, o.Payload)
+	return fmt.Sprintf("[DELETE /admin/users/{user}][%d] removeUser default  %+v", o._statusCode, o.Payload)
 }
 
 func (o *RemoveUserDefault) GetPayload() *models.Error {

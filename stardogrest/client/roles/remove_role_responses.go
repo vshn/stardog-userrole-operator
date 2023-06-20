@@ -29,6 +29,12 @@ func (o *RemoveRoleReader) ReadResponse(response runtime.ClientResponse, consume
 			return nil, err
 		}
 		return result, nil
+	case 404:
+		result := NewRemoveRoleNotFound()
+		if err := result.readResponse(response, consumer, o.formats); err != nil {
+			return nil, err
+		}
+		return nil, result
 	default:
 		result := NewRemoveRoleDefault(response.Code())
 		if err := result.readResponse(response, consumer, o.formats); err != nil {
@@ -85,14 +91,82 @@ func (o *RemoveRoleNoContent) Code() int {
 }
 
 func (o *RemoveRoleNoContent) Error() string {
-	return fmt.Sprintf("[DELETE /roles/{role}][%d] removeRoleNoContent ", 204)
+	return fmt.Sprintf("[DELETE /admin/roles/{role}][%d] removeRoleNoContent ", 204)
 }
 
 func (o *RemoveRoleNoContent) String() string {
-	return fmt.Sprintf("[DELETE /roles/{role}][%d] removeRoleNoContent ", 204)
+	return fmt.Sprintf("[DELETE /admin/roles/{role}][%d] removeRoleNoContent ", 204)
 }
 
 func (o *RemoveRoleNoContent) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+
+	return nil
+}
+
+// NewRemoveRoleNotFound creates a RemoveRoleNotFound with default headers values
+func NewRemoveRoleNotFound() *RemoveRoleNotFound {
+	return &RemoveRoleNotFound{}
+}
+
+/*
+RemoveRoleNotFound describes a response with status code 404, with default header values.
+
+Role does not exist
+*/
+type RemoveRoleNotFound struct {
+	Payload *models.NotExists
+}
+
+// IsSuccess returns true when this remove role not found response has a 2xx status code
+func (o *RemoveRoleNotFound) IsSuccess() bool {
+	return false
+}
+
+// IsRedirect returns true when this remove role not found response has a 3xx status code
+func (o *RemoveRoleNotFound) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this remove role not found response has a 4xx status code
+func (o *RemoveRoleNotFound) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this remove role not found response has a 5xx status code
+func (o *RemoveRoleNotFound) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this remove role not found response a status code equal to that given
+func (o *RemoveRoleNotFound) IsCode(code int) bool {
+	return code == 404
+}
+
+// Code gets the status code for the remove role not found response
+func (o *RemoveRoleNotFound) Code() int {
+	return 404
+}
+
+func (o *RemoveRoleNotFound) Error() string {
+	return fmt.Sprintf("[DELETE /admin/roles/{role}][%d] removeRoleNotFound  %+v", 404, o.Payload)
+}
+
+func (o *RemoveRoleNotFound) String() string {
+	return fmt.Sprintf("[DELETE /admin/roles/{role}][%d] removeRoleNotFound  %+v", 404, o.Payload)
+}
+
+func (o *RemoveRoleNotFound) GetPayload() *models.NotExists {
+	return o.Payload
+}
+
+func (o *RemoveRoleNotFound) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+
+	o.Payload = new(models.NotExists)
+
+	// response payload
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+		return err
+	}
 
 	return nil
 }
@@ -146,11 +220,11 @@ func (o *RemoveRoleDefault) Code() int {
 }
 
 func (o *RemoveRoleDefault) Error() string {
-	return fmt.Sprintf("[DELETE /roles/{role}][%d] removeRole default  %+v", o._statusCode, o.Payload)
+	return fmt.Sprintf("[DELETE /admin/roles/{role}][%d] removeRole default  %+v", o._statusCode, o.Payload)
 }
 
 func (o *RemoveRoleDefault) String() string {
-	return fmt.Sprintf("[DELETE /roles/{role}][%d] removeRole default  %+v", o._statusCode, o.Payload)
+	return fmt.Sprintf("[DELETE /admin/roles/{role}][%d] removeRole default  %+v", o._statusCode, o.Payload)
 }
 
 func (o *RemoveRoleDefault) GetPayload() *models.Error {

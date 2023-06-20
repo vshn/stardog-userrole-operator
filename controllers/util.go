@@ -1,31 +1,31 @@
 package controllers
 
 import (
-	"context"
 	"fmt"
+	"github.com/vshn/stardog-userrole-operator/stardogrest/client/db"
+	"github.com/vshn/stardog-userrole-operator/stardogrest/client/roles"
+	"github.com/vshn/stardog-userrole-operator/stardogrest/client/roles_permissions"
+	"github.com/vshn/stardog-userrole-operator/stardogrest/client/users"
+	"github.com/vshn/stardog-userrole-operator/stardogrest/client/users_permissions"
+	"github.com/vshn/stardog-userrole-operator/stardogrest/client/users_roles"
 	"github.com/vshn/stardog-userrole-operator/stardogrest/models"
 	"os"
 	"reflect"
 	"strings"
 	"time"
 
-	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	types "k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
 	. "github.com/vshn/stardog-userrole-operator/api/v1alpha1"
 	stardogv1beta1 "github.com/vshn/stardog-userrole-operator/api/v1beta1"
-	"github.com/vshn/stardog-userrole-operator/pkg/stardogapi"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var (
-	ReconFreqErr = time.Duration(0)
+	ReconFreqErr = time.Second * 30
 	ReconFreq    = time.Duration(0)
 )
 
-// initEnv initialize env variables
+// InitEnv initialize env variables
 func InitEnv() {
 	ReconFreqErr, _ = time.ParseDuration(os.Getenv("RECONCILIATION_FREQUENCY_ON_ERROR"))
 	ReconFreq, _ = time.ParseDuration(os.Getenv("RECONCILIATION_FREQUENCY"))
@@ -170,6 +170,15 @@ func containsOperatorPermission(permissionsTypeA []*models.Permission, permissio
 	return false
 }
 
+func containsPermission(permissionsA []*models.Permission, permissionB models.Permission) bool {
+	for _, permissionA := range permissionsA {
+		if reflect.DeepEqual(*permissionA, permissionB) {
+			return true
+		}
+	}
+	return false
+}
+
 func equals(permissionTypeA models.Permission, permissionTypeB StardogPermissionSpec) bool {
 	var action bool
 	if permissionTypeA.Action == nil {
@@ -204,12 +213,31 @@ func equals(permissionTypeA models.Permission, permissionTypeB StardogPermission
 	return action && resourceType && resources
 }
 
-func NewStardogAPIClientFromInstance(ctx context.Context, client client.Client, instance *stardogv1beta1.Instance) (*stardogapi.Client, error) {
-	credentialSecret := &corev1.Secret{}
-	err := client.Get(ctx, types.NamespacedName{Namespace: instance.Namespace, Name: instance.Spec.AdminCredentialRef.Name}, credentialSecret)
-	if err != nil {
-		return nil, err
+func removeStardogInstanceRef(refs []stardogv1beta1.StardogInstanceRef, ref stardogv1beta1.StardogInstanceRef) []stardogv1beta1.StardogInstanceRef {
+	for index, curRef := range refs {
+		if reflect.DeepEqual(curRef, ref) {
+			return append(refs[:index], refs[index+1:]...)
+		}
 	}
+	return refs
+}
 
-	return stardogapi.NewClient(instance.Spec.AdminCredentialRef.Key, string(credentialSecret.Data[instance.Spec.AdminCredentialRef.Key]), instance.Spec.URL), nil
+func containsStardogInstanceRef(refs []stardogv1beta1.StardogInstanceRef, ref stardogv1beta1.StardogInstanceRef) bool {
+	for _, curRef := range refs {
+		if reflect.DeepEqual(curRef, ref) {
+			return true
+		}
+	}
+	return false
+}
+
+func NotFound(err error) bool {
+	errType := reflect.TypeOf(err).String()
+	return errType == reflect.TypeOf(roles_permissions.NewRemoveRolePermissionNotFound()).String() ||
+		errType == reflect.TypeOf(users_roles.NewRemoveRoleOfUserNotFound()).String() ||
+		errType == reflect.TypeOf(db.NewDropDatabaseNotFound()).String() ||
+		errType == reflect.TypeOf(roles.NewRemoveRoleNotFound()).String() ||
+		errType == reflect.TypeOf(users.NewRemoveUserNotFound()).String() ||
+		errType == reflect.TypeOf(users_permissions.NewRemoveUserPermissionNotFound()).String() ||
+		errType == reflect.TypeOf(db.NewGetDBSizeNotFound()).String()
 }

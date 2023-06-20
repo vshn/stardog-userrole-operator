@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"github.com/vshn/stardog-userrole-operator/api/v1beta1"
 	stardogmock "github.com/vshn/stardog-userrole-operator/stardogrest/mocks"
 	"testing"
 
@@ -27,6 +28,10 @@ func Test_initStardogClientFromRef(t *testing.T) {
 	serverURL := "http://url:8080"
 	username := "admin"
 	password := "1234"
+	stardogInstanceRef := v1beta1.StardogInstanceRef{
+		Name:      stardogInstanceName,
+		Namespace: namespace,
+	}
 
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
@@ -74,7 +79,7 @@ func Test_initStardogClientFromRef(t *testing.T) {
 
 			base64.StdEncoding.EncodeToString([]byte(username))
 
-			_, err = rc.initStardogClientFromRef(fakeKubeClient, stardogInstanceName)
+			_, err = rc.initStardogClientFromRef(fakeKubeClient, stardogInstanceRef)
 
 			assert.Equal(t, tt.err, err)
 		})

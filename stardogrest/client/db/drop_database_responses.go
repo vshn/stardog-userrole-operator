@@ -36,7 +36,14 @@ func (o *DropDatabaseReader) ReadResponse(response runtime.ClientResponse, consu
 		}
 		return nil, result
 	default:
-		return nil, runtime.NewAPIError("[DELETE /databases/{db}] dropDatabase", response, response.Code())
+		result := NewDropDatabaseDefault(response.Code())
+		if err := result.readResponse(response, consumer, o.formats); err != nil {
+			return nil, err
+		}
+		if response.Code()/100 == 2 {
+			return result, nil
+		}
+		return nil, result
 	}
 }
 
@@ -85,11 +92,11 @@ func (o *DropDatabaseOK) Code() int {
 }
 
 func (o *DropDatabaseOK) Error() string {
-	return fmt.Sprintf("[DELETE /databases/{db}][%d] dropDatabaseOK  %+v", 200, o.Payload)
+	return fmt.Sprintf("[DELETE /admin/databases/{db}][%d] dropDatabaseOK  %+v", 200, o.Payload)
 }
 
 func (o *DropDatabaseOK) String() string {
-	return fmt.Sprintf("[DELETE /databases/{db}][%d] dropDatabaseOK  %+v", 200, o.Payload)
+	return fmt.Sprintf("[DELETE /admin/databases/{db}][%d] dropDatabaseOK  %+v", 200, o.Payload)
 }
 
 func (o *DropDatabaseOK) GetPayload() *models.Generic {
@@ -119,7 +126,7 @@ DropDatabaseNotFound describes a response with status code 404, with default hea
 Database does not exist
 */
 type DropDatabaseNotFound struct {
-	Payload *models.DBMissing
+	Payload *models.NotExists
 }
 
 // IsSuccess returns true when this drop database not found response has a 2xx status code
@@ -153,20 +160,92 @@ func (o *DropDatabaseNotFound) Code() int {
 }
 
 func (o *DropDatabaseNotFound) Error() string {
-	return fmt.Sprintf("[DELETE /databases/{db}][%d] dropDatabaseNotFound  %+v", 404, o.Payload)
+	return fmt.Sprintf("[DELETE /admin/databases/{db}][%d] dropDatabaseNotFound  %+v", 404, o.Payload)
 }
 
 func (o *DropDatabaseNotFound) String() string {
-	return fmt.Sprintf("[DELETE /databases/{db}][%d] dropDatabaseNotFound  %+v", 404, o.Payload)
+	return fmt.Sprintf("[DELETE /admin/databases/{db}][%d] dropDatabaseNotFound  %+v", 404, o.Payload)
 }
 
-func (o *DropDatabaseNotFound) GetPayload() *models.DBMissing {
+func (o *DropDatabaseNotFound) GetPayload() *models.NotExists {
 	return o.Payload
 }
 
 func (o *DropDatabaseNotFound) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
-	o.Payload = new(models.DBMissing)
+	o.Payload = new(models.NotExists)
+
+	// response payload
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+		return err
+	}
+
+	return nil
+}
+
+// NewDropDatabaseDefault creates a DropDatabaseDefault with default headers values
+func NewDropDatabaseDefault(code int) *DropDatabaseDefault {
+	return &DropDatabaseDefault{
+		_statusCode: code,
+	}
+}
+
+/*
+DropDatabaseDefault describes a response with status code -1, with default header values.
+
+unexpected error
+*/
+type DropDatabaseDefault struct {
+	_statusCode int
+
+	Payload *models.Error
+}
+
+// IsSuccess returns true when this drop database default response has a 2xx status code
+func (o *DropDatabaseDefault) IsSuccess() bool {
+	return o._statusCode/100 == 2
+}
+
+// IsRedirect returns true when this drop database default response has a 3xx status code
+func (o *DropDatabaseDefault) IsRedirect() bool {
+	return o._statusCode/100 == 3
+}
+
+// IsClientError returns true when this drop database default response has a 4xx status code
+func (o *DropDatabaseDefault) IsClientError() bool {
+	return o._statusCode/100 == 4
+}
+
+// IsServerError returns true when this drop database default response has a 5xx status code
+func (o *DropDatabaseDefault) IsServerError() bool {
+	return o._statusCode/100 == 5
+}
+
+// IsCode returns true when this drop database default response a status code equal to that given
+func (o *DropDatabaseDefault) IsCode(code int) bool {
+	return o._statusCode == code
+}
+
+// Code gets the status code for the drop database default response
+func (o *DropDatabaseDefault) Code() int {
+	return o._statusCode
+}
+
+func (o *DropDatabaseDefault) Error() string {
+	return fmt.Sprintf("[DELETE /admin/databases/{db}][%d] dropDatabase default  %+v", o._statusCode, o.Payload)
+}
+
+func (o *DropDatabaseDefault) String() string {
+	return fmt.Sprintf("[DELETE /admin/databases/{db}][%d] dropDatabase default  %+v", o._statusCode, o.Payload)
+}
+
+func (o *DropDatabaseDefault) GetPayload() *models.Error {
+	return o.Payload
+}
+
+func (o *DropDatabaseDefault) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+
+	o.Payload = new(models.Error)
 
 	// response payload
 	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {

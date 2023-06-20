@@ -85,11 +85,11 @@ func (o *AddUserPermissionCreated) Code() int {
 }
 
 func (o *AddUserPermissionCreated) Error() string {
-	return fmt.Sprintf("[PUT /permissions/user/{user}][%d] addUserPermissionCreated ", 201)
+	return fmt.Sprintf("[PUT /admin/permissions/user/{user}][%d] addUserPermissionCreated ", 201)
 }
 
 func (o *AddUserPermissionCreated) String() string {
-	return fmt.Sprintf("[PUT /permissions/user/{user}][%d] addUserPermissionCreated ", 201)
+	return fmt.Sprintf("[PUT /admin/permissions/user/{user}][%d] addUserPermissionCreated ", 201)
 }
 
 func (o *AddUserPermissionCreated) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
@@ -146,11 +146,11 @@ func (o *AddUserPermissionDefault) Code() int {
 }
 
 func (o *AddUserPermissionDefault) Error() string {
-	return fmt.Sprintf("[PUT /permissions/user/{user}][%d] addUserPermission default  %+v", o._statusCode, o.Payload)
+	return fmt.Sprintf("[PUT /admin/permissions/user/{user}][%d] addUserPermission default  %+v", o._statusCode, o.Payload)
 }
 
 func (o *AddUserPermissionDefault) String() string {
-	return fmt.Sprintf("[PUT /permissions/user/{user}][%d] addUserPermission default  %+v", o._statusCode, o.Payload)
+	return fmt.Sprintf("[PUT /admin/permissions/user/{user}][%d] addUserPermission default  %+v", o._statusCode, o.Payload)
 }
 
 func (o *AddUserPermissionDefault) GetPayload() *models.Error {

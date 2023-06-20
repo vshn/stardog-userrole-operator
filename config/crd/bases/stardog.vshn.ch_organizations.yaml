@@ -5,20 +5,20 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.9.0
   creationTimestamp: null
-  name: databases.stardog.vshn.ch
+  name: organizations.stardog.vshn.ch
 spec:
   group: stardog.vshn.ch
   names:
-    kind: Database
-    listKind: DatabaseList
-    plural: databases
-    singular: database
+    kind: Organization
+    listKind: OrganizationList
+    plural: organizations
+    singular: organization
   scope: Cluster
   versions:
   - name: v1beta1
     schema:
       openAPIV3Schema:
-        description: Database is the Schema for the databases API
+        description: Organization is the Schema for the organizations API
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -33,35 +33,28 @@ spec:
           metadata:
             type: object
           spec:
-            description: DatabaseSpec defines the desired state of the Database
+            description: OrganizationSpec defines the desired state of an Organization
             properties:
-              databaseName:
-                description: DatabaseName the database name that has to be created
-                  in the Stardog server
+              databaseRef:
+                description: DatabaseRef is the name of the Database this Organization
+                  is assigned to
                 type: string
-              namedGraphPrefix:
-                description: NamedGraphPrefix a prefix for a Stardog Named Graph.
+              displayName:
+                description: DisplayName is the long name of an organization
                 type: string
-              options:
-                description: Options is the Stardog configuration options for this
-                  database. Only json input is valid.
+              name:
+                description: Name is the short name of an organization
                 type: string
-              stardogInstanceRefs:
-                description: StardogInstanceRefs contains the reference to the Stardog
-                  instance the database should exist in
+              namedGraphs:
+                description: NamedGraphs are the suffix graph names for this organization.
+                  The prefix can be found in the Database resource. The final graphs
+                  is defined as prefix + "/" + orgName + "/" suffix
                 items:
-                  description: StardogInstanceRef contains name and namespace for
-                    a stardog instance
-                  properties:
-                    name:
-                      type: string
-                    namespace:
-                      type: string
-                  type: object
+                  type: string
                 type: array
             type: object
           status:
-            description: DatabaseStatus defines the observed state of the Database
+            description: OrganizationStatus defines the observed state of the Organization
             properties:
               conditions:
                 items:
@@ -84,13 +77,17 @@ spec:
                   - type
                   type: object
                 type: array
-              databaseName:
+              databaseRef:
                 type: string
-              namedGraphPrefix:
+              displayName:
                 type: string
-              options:
+              name:
                 type: string
-              stardogInstanceRef:
+              namedGraphs:
+                items:
+                  type: string
+                type: array
+              stardogInstanceRefs:
                 items:
                   description: StardogInstanceRef contains name and namespace for
                     a stardog instance
