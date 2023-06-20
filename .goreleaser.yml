@@ -23,9 +23,9 @@ snapshot:
 
 dockers:
 - image_templates:
-  - "docker.io/vshn/stardog-userrole-operator:latest"
-  - "docker.io/vshn/stardog-userrole-operator:v{{ .Version }}"
-  - "docker.io/vshn/stardog-userrole-operator:v{{ .Major }}"
+  - "ghcr.io/vshn/stardog-userrole-operator:latest"
+  - "ghcr.io/vshn/stardog-userrole-operator:v{{ .Version }}"
+  - "ghcr.io/vshn/stardog-userrole-operator:v{{ .Major }}"
 
 changelog:
   sort: asc
