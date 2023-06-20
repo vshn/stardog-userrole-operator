@@ -1,7 +1,7 @@
 # Image URL to use all building/pushing image targets
 # TODO
 IMG_TAG ?= latest
-IMG ?= ghcr.io/zugao/stardog-userrole-operator:${IMG_TAG}  #vshn/stardog-userrole-operator:latest
+IMG ?= ghcr.io/vshn/stardog-userrole-operator:${IMG_TAG}  #vshn/stardog-userrole-operator:latest
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.24.1
 BIN_FILENAME ?= stardog-userrole-operator
