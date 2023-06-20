@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/go-logr/logr"
 	"github.com/go-openapi/runtime"
-	"github.com/sethvargo/go-password/password"
 	stardogv1alpha1 "github.com/vshn/stardog-userrole-operator/api/v1alpha1"
 	stardogv1beta1 "github.com/vshn/stardog-userrole-operator/api/v1beta1"
 	stardog "github.com/vshn/stardog-userrole-operator/stardogrest/client"
@@ -211,19 +210,29 @@ func (r *OrganizationReconciler) sync(or *OrganizationReconciliation, instance s
 	// Generate and save credentials in k8s
 	secretName := getUsersCredentialSecret(dbName, orgName)
 	userRoleName := getUserAndRoleName(dbName, orgName)
-	credDBSecret, err := r.createCredentials(or, secretName, userRoleName)
 	if err != nil {
 		return err
 	}
 
 	// create default write user for organization
-	usrs := []models.User{
-		{Password: []string{string(credDBSecret.Data[userRoleName])}, Username: &userRoleName},
+	pass, err := generatePassword()
+	if err != nil {
+		return err
 	}
-	err = createDefaultUsersForDB(stardogClient, auth, usrs)
+	usr := models.User{
+		Password: []string{pass}, Username: &userRoleName,
+	}
+	usrs, err := createDefaultUsersForDB(stardogClient, auth, []models.User{usr})
 	if err != nil {
 		r.Log.Error(err, "error creating users", "users", usrs)
 		return err
+	}
+	if len(usrs) != 0 {
+		err = r.createCredentials(or, secretName, usrs)
+		if err != nil {
+			r.Log.Error(err, "error creating secret credentials", "users", usrs)
+			return err
+		}
 	}
 
 	// create default read and write roles
@@ -377,8 +386,7 @@ func (r *OrganizationReconciler) deleteOrganization(or *OrganizationReconciliati
 	return nil
 }
 
-func (r *OrganizationReconciler) createCredentials(or *OrganizationReconciliation, secretName, userName string) (*v1.Secret, error) {
-
+func (r *OrganizationReconciler) createCredentials(or *OrganizationReconciliation, secretName string, usrs []models.User) error {
 	org := or.resource
 	rc := or.reconciliationContext
 	ctx := rc.context
@@ -387,12 +395,12 @@ func (r *OrganizationReconciler) createCredentials(or *OrganizationReconciliatio
 	err := r.Get(ctx, types.NamespacedName{Name: secretName, Namespace: namespace}, secret)
 
 	if err == nil {
-		return secret, nil
+		return nil
 	}
 
 	if !apierrors.IsNotFound(err) {
 		r.Log.Error(err, fmt.Sprintf("error getting Secret %s/%s", namespace, secretName))
-		return nil, err
+		return err
 	}
 
 	secret = &v1.Secret{
@@ -402,17 +410,12 @@ func (r *OrganizationReconciler) createCredentials(or *OrganizationReconciliatio
 		}}
 	err = controllerutil.SetControllerReference(org, secret, r.Scheme)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	pwd, err := password.Generate(20, 5, 0, false, false)
-	if err != nil {
-		r.Log.Error(err, "generation of password for read user failed", "organization", org.Spec.Name)
-		return nil, err
-	}
-
-	secret.StringData = map[string]string{
-		userName: pwd,
+	secret.StringData = map[string]string{}
+	for _, u := range usrs {
+		secret.StringData[*u.Username] = u.Password[0]
 	}
 
 	err = r.Create(ctx, secret)
@@ -420,17 +423,17 @@ func (r *OrganizationReconciler) createCredentials(or *OrganizationReconciliatio
 		err = r.Get(ctx, types.NamespacedName{Name: secretName, Namespace: secret.Namespace}, secret)
 		if err != nil {
 			r.Log.Error(err, fmt.Sprintf("error creating secret %s/%s", namespace, secretName))
-			return nil, fmt.Errorf("cannot get existing credentials from secret %s: %v", secretName, err)
+			return fmt.Errorf("cannot get existing credentials from secret %s: %v", secretName, err)
 		}
-		return secret, nil
+		return nil
 	}
 	if err != nil {
 		r.Log.Error(err, fmt.Sprintf("error creating secret %s/%s", namespace, secretName))
-		return nil, err
+		return err
 	}
 
 	r.Log.Info("created credential secret", "namespace", secret.Namespace, "name", secret.Name)
-	return secret, nil
+	return nil
 }
 
 // SetupWithManager sets up the controller with the Manager.

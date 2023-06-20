@@ -349,10 +349,6 @@ func (r *DatabaseReconciler) sync(dr *DatabaseReconciliation, instance stardogv1
 	// Generate and save credentials in k8s
 	secretName := getUsersCredentialSecret(database.Spec.DatabaseName, instance.Name)
 	readName, writeName := getUserRoleNames(database.Spec.DatabaseName)
-	credDBSecret, err := r.createCredentials(dr, secretName, readName, writeName)
-	if err != nil {
-		return err
-	}
 
 	// Create database in Stardog if it does not exist
 	liveDatabases, err := stardogClient.Db.ListDatabases(nil, auth)
@@ -370,14 +366,30 @@ func (r *DatabaseReconciler) sync(dr *DatabaseReconciliation, instance stardogv1
 	}
 
 	// create default read and write users
-	usrs := []models.User{
-		{Password: []string{string(credDBSecret.Data[readName])}, Username: &readName},
-		{Password: []string{string(credDBSecret.Data[writeName])}, Username: &writeName},
+	readPwd, err := generatePassword()
+	if err != nil {
+		return err
 	}
-	err = createDefaultUsersForDB(stardogClient, auth, usrs)
+	writePwd, err := generatePassword()
+	if err != nil {
+		return err
+	}
+	usrs := []models.User{
+		{Password: []string{readPwd}, Username: &readName},
+		{Password: []string{writePwd}, Username: &writeName},
+	}
+	usrs, err = createDefaultUsersForDB(stardogClient, auth, usrs)
 	if err != nil {
 		r.Log.Error(err, "error creating users", "users", usrs)
 		return err
+	}
+	// don't create any credential secret if no users have been created in Stardog
+	if len(usrs) != 0 {
+		err = r.createCredentials(dr, secretName, usrs)
+		if err != nil {
+			r.Log.Error(err, "error creating secret credentials", "users", usrs)
+			return err
+		}
 	}
 
 	// create default read and write roles
@@ -475,19 +487,28 @@ func (r *DatabaseReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
+func generatePassword() (string, error) {
+	pass, err := password.Generate(20, 5, 0, false, false)
+	if err != nil {
+		return "", fmt.Errorf("generation of password for user failed: %v", err)
+	}
+	return pass, nil
+}
+
 // Generate and save credentials for Database
-func (r *DatabaseReconciler) createCredentials(dr *DatabaseReconciliation, secretName string, readName string, writeName string) (*corev1.Secret, error) {
+func (r *DatabaseReconciler) createCredentials(dr *DatabaseReconciliation, secretName string, users []models.User) error {
 	database := dr.resource
 	rc := dr.reconciliationContext
 	ctx := dr.reconciliationContext.context
+
 	secret := &corev1.Secret{}
 	err := r.Get(ctx, types.NamespacedName{Name: secretName, Namespace: rc.namespace}, secret)
 
 	if err == nil {
-		return secret, nil
+		return nil
 	} else if !apierrors.IsNotFound(err) {
 		r.Log.Error(err, fmt.Sprintf("error getting Secret %s/%s", rc.namespace, secretName))
-		return nil, err
+		return err
 	}
 
 	secret = &corev1.Secret{
@@ -497,42 +518,30 @@ func (r *DatabaseReconciler) createCredentials(dr *DatabaseReconciliation, secre
 		}}
 	err = controllerutil.SetControllerReference(database, secret, r.Scheme)
 	if err != nil {
-		return nil, err
-	}
-
-	readPassword, err := password.Generate(20, 5, 0, false, false)
-	if err != nil {
-		r.Log.Error(err, "generation of password for read user failed", "db", database.Spec.DatabaseName)
-		return nil, err
-	}
-
-	writePassword, err := password.Generate(20, 5, 0, false, false)
-	if err != nil {
-		r.Log.Error(err, "generation of password for write user failed", "db", database.Spec.DatabaseName)
-		return nil, err
+		return err
 	}
 
 	secret.StringData = map[string]string{}
-
-	secret.StringData[readName] = readPassword
-	secret.StringData[writeName] = writePassword
+	for _, user := range users {
+		secret.StringData[*user.Username] = user.Password[0]
+	}
 
 	err = r.Create(ctx, secret)
 	if err != nil && apierrors.IsAlreadyExists(err) {
 		err = r.Get(ctx, types.NamespacedName{Name: secretName, Namespace: secret.Namespace}, secret)
 		if err != nil {
 			r.Log.Error(err, fmt.Sprintf("error creating secret %s/%s", rc.namespace, secretName))
-			return nil, fmt.Errorf("cannot get existing credentials from secret %s: %v", secretName, err)
+			return fmt.Errorf("cannot get existing credentials from secret %s: %v", secretName, err)
 		}
-		return secret, nil
+		return nil
 	}
 	if err != nil {
 		r.Log.Error(err, fmt.Sprintf("error creating secret %s/%s", rc.namespace, secretName))
-		return nil, err
+		return err
 	}
 
 	r.Log.Info("created credential secret", "namespace", secret.Namespace, "name", secret.Name)
-	return secret, nil
+	return nil
 }
 
 func createDatabase(database *stardogv1beta1.Database, stardogClient *stardog.Stardog, auth runtime.ClientAuthInfoWriter) error {
@@ -562,21 +571,23 @@ func createDatabase(database *stardogv1beta1.Database, stardogClient *stardog.St
 	return nil
 }
 
-func createDefaultUsersForDB(stardogClient *stardog.Stardog, auth runtime.ClientAuthInfoWriter, usrs []models.User) error {
+func createDefaultUsersForDB(stardogClient *stardog.Stardog, auth runtime.ClientAuthInfoWriter, usrs []models.User) ([]models.User, error) {
 	existingUsers, err := stardogClient.Users.ListUsers(nil, auth)
 	if err != nil || !existingUsers.IsSuccess() {
-		return fmt.Errorf("error listing users: %w", err)
+		return []models.User{}, fmt.Errorf("error listing users: %w", err)
 	}
 
+	createdUsers := make([]models.User, 0)
 	for _, user := range usrs {
 		if !slices.Contains(existingUsers.Payload.Users, *user.Username) {
 			createUserResp, err := stardogClient.Users.CreateUser(users.NewCreateUserParams().WithUser(&user), auth)
 			if err != nil || !createUserResp.IsSuccess() {
-				return fmt.Errorf("error create database user %s: %w", *user.Username, err)
+				return []models.User{}, fmt.Errorf("error create database user %s: %w", *user.Username, err)
 			}
+			createdUsers = append(createdUsers, user)
 		}
 	}
-	return nil
+	return createdUsers, nil
 }
 
 func createDefaultPermissions(stardogClient *stardog.Stardog, auth runtime.ClientAuthInfoWriter, role string, perms []models.Permission) error {
