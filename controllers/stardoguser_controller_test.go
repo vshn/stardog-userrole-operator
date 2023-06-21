@@ -99,7 +99,7 @@ func Test_deleteStardogUser(t *testing.T) {
 					Return(users.NewRemoveUserNoContent(), errors.New("cannot remove user"))
 			},
 			expectedFinalizers: []string{userFinalizer},
-			err:                errors.New("cannot remove Stardog user namespace-test/dXNlcg==: cannot remove user"),
+			err:                errors.New("cannot remove Stardog user namespace-test/user-test: cannot remove user"),
 		},
 	}
 

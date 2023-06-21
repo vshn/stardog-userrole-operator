@@ -144,15 +144,9 @@ func (r *StardogUserReconciler) finalize(sur *StardogUserReconciliation) error {
 		return err
 	}
 
-	r.Log.V(1).Info("retrieving user credentials from Secret", "secret", spec.Credentials.Namespace+"/"+spec.Credentials.SecretRef)
-	username, _, err := rc.getCredentials(r.Client, spec.Credentials, namespace)
+	_, err = rc.stardogClient.Users.RemoveUser(model_users.NewRemoveUserParams().WithUser(sur.resource.Name), auth)
 	if err != nil {
-		return err
-	}
-
-	_, err = rc.stardogClient.Users.RemoveUser(model_users.NewRemoveUserParams().WithUser(username), auth)
-	if err != nil {
-		return fmt.Errorf("cannot remove Stardog user %s/%s: %v", namespace, username, err)
+		return fmt.Errorf("cannot remove Stardog user %s/%s: %v", namespace, sur.resource.Name, err)
 	}
 	return nil
 }
