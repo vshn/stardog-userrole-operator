@@ -51,6 +51,10 @@ func (r *StardogInstanceReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		return ctrl.Result{Requeue: true, RequeueAfter: ReconFreqErr}, err
 	}
 
+	if environmentDisabled(stardogInstance) {
+		return ctrl.Result{Requeue: false}, nil
+	}
+
 	sir := &StardogInstanceReconciliation{
 		reconciliationContext: &ReconciliationContext{
 			context:       ctx,
