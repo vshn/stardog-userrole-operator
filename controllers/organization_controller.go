@@ -460,12 +460,12 @@ func getGraphPermissions(org *stardogv1beta1.Organization, namedGraphPrefix, dbN
 		ngPerm := []models.Permission{
 			{
 				Action:       pointer.String("READ"),
-				Resource:     []string{fullNameNG, dbName},
+				Resource:     []string{dbName, fullNameNG},
 				ResourceType: pointer.String("named-graph"),
 			},
 			{
 				Action:       pointer.String("WRITE"),
-				Resource:     []string{fullNameNG, dbName},
+				Resource:     []string{dbName, fullNameNG},
 				ResourceType: pointer.String("named-graph"),
 			},
 		}
