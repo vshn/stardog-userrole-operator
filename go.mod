@@ -14,7 +14,7 @@ require (
 	github.com/onsi/gomega v1.26.0
 	github.com/sethvargo/go-password v0.2.0
 	github.com/stretchr/testify v1.8.4
-	golang.org/x/exp v0.0.0-20230728194245-b0cb94b80691
+	golang.org/x/exp v0.0.0-20230801115018-d63ba01acd4b
 	k8s.io/api v0.26.1
 	k8s.io/apimachinery v0.26.1
 	k8s.io/client-go v0.26.1
