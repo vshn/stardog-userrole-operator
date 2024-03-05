@@ -50,7 +50,18 @@ spec:
                   The prefix can be found in the Database resource. The final graphs
                   is defined as prefix + "/" + orgName + "/" suffix
                 items:
-                  type: string
+                  description: NamedGraph defines the name and if necessary add another
+                    hidden named graph for this named graph
+                  properties:
+                    addHidden:
+                      default: false
+                      description: AddHidden adds another graph with the same name
+                        but with a prefix "<named-graph-name/hidden>"
+                      type: boolean
+                    name:
+                      description: The name of the Named Graph
+                      type: string
+                  type: object
                 type: array
             type: object
           status:
@@ -85,7 +96,18 @@ spec:
                 type: string
               namedGraphs:
                 items:
-                  type: string
+                  description: NamedGraph defines the name and if necessary add another
+                    hidden named graph for this named graph
+                  properties:
+                    addHidden:
+                      default: false
+                      description: AddHidden adds another graph with the same name
+                        but with a prefix "<named-graph-name/hidden>"
+                      type: boolean
+                    name:
+                      description: The name of the Named Graph
+                      type: string
+                  type: object
                 type: array
               stardogInstanceRefs:
                 items:

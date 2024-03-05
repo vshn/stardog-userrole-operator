@@ -23,6 +23,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sort"
 	"strings"
 )
 
@@ -266,6 +267,7 @@ func (r *OrganizationReconciler) sync(or *OrganizationReconciliation, instance s
 		r.Log.Error(err, "Cannot assign defaultRoles", "user", userRoleName)
 		return err
 	}
+
 	return nil
 }
 
@@ -288,17 +290,44 @@ func assignDefaultRole(stardogClient *stardog.Stardog, auth runtime.ClientAuthIn
 }
 
 func removePermissions(org *stardogv1beta1.Organization, database *stardogv1beta1.Database, stardogClient *stardog.Stardog, auth runtime.ClientAuthInfoWriter, userRoleName string) error {
-	for _, graph := range org.Status.NamedGraphs {
-		if !contains(org.Spec.NamedGraphs, graph) {
-			perm := roles_permissions.NewRemoveRolePermissionParams().WithRole(userRoleName)
-			ng := getFullNamedGraph(org.Spec.Name, database.Spec.NamedGraphPrefix, graph)
+	for _, statusGraph := range org.Status.NamedGraphs {
+		perm := roles_permissions.NewRemoveRolePermissionParams().WithRole(userRoleName)
+		if !contains(stardogv1beta1.GetNamedGraphNames(org.Spec.NamedGraphs), statusGraph.Name) {
+			ng := getFullNamedGraph(org.Spec.Name, database.Spec.NamedGraphPrefix, statusGraph.Name, false)
 			for _, p := range getGraphPermissionForNameGraphs(ng, database.Spec.DatabaseName) {
 				pResp, err := stardogClient.RolesPermissions.RemoveRolePermission(perm.WithPermission(&p), auth)
 				if err != nil || !pResp.IsSuccess() {
 					return fmt.Errorf("cannot remove permission %+v for graph %s: %v", p, ng, err)
 				}
 			}
+
+			// If a NamedGraph has AddHidden then remove the permission from the hidden graph as well
+			if statusGraph.AddHidden {
+				ngh := getFullNamedGraph(org.Spec.Name, database.Spec.NamedGraphPrefix, statusGraph.Name, true)
+				for _, p := range getGraphPermissionForNameGraphs(ngh, database.Spec.DatabaseName) {
+					pResp, err := stardogClient.RolesPermissions.RemoveRolePermission(perm.WithPermission(&p), auth)
+					if err != nil || !pResp.IsSuccess() {
+						return fmt.Errorf("cannot remove permission %+v for graph %s: %v", p, ngh, err)
+					}
+				}
+			}
+		} else {
+			// If the named graph still exists but has AddHidden true then delete the hidden graph
+			specGraph, err := stardogv1beta1.FindNamedGraphByName(org.Spec.NamedGraphs, statusGraph.Name)
+			if err != nil {
+				return fmt.Errorf("cannot find spec graph by name %s: %v", statusGraph.Name, err)
+			}
+			if specGraph.AddHidden == false && statusGraph.AddHidden == true {
+				ngh := getFullNamedGraph(org.Spec.Name, database.Spec.NamedGraphPrefix, statusGraph.Name, true)
+				for _, p := range getGraphPermissionForNameGraphs(ngh, database.Spec.DatabaseName) {
+					pResp, err := stardogClient.RolesPermissions.RemoveRolePermission(perm.WithPermission(&p), auth)
+					if err != nil || !pResp.IsSuccess() {
+						return fmt.Errorf("cannot remove permission %+v for graph %s: %v", p, ngh, err)
+					}
+				}
+			}
 		}
+
 	}
 	return nil
 }
@@ -456,7 +485,7 @@ func getUserAndRoleName(dbName, orgName string) string {
 func getGraphPermissions(org *stardogv1beta1.Organization, namedGraphPrefix, dbName string) []models.Permission {
 	perms := make([]models.Permission, 0)
 	for _, ng := range org.Spec.NamedGraphs {
-		fullNameNG := getFullNamedGraph(org.Spec.Name, namedGraphPrefix, ng)
+		fullNameNG := getFullNamedGraph(org.Spec.Name, namedGraphPrefix, ng.Name, false)
 		ngPerm := []models.Permission{
 			{
 				Action:       pointer.String("READ"),
@@ -469,25 +498,46 @@ func getGraphPermissions(org *stardogv1beta1.Organization, namedGraphPrefix, dbN
 				ResourceType: pointer.String("named-graph"),
 			},
 		}
+		if ng.AddHidden {
+			fullNameNGH := getFullNamedGraph(org.Spec.Name, namedGraphPrefix, ng.Name, true)
+			ngPermHidden := []models.Permission{
+				{
+					Action:       pointer.String("READ"),
+					Resource:     []string{dbName, fullNameNGH},
+					ResourceType: pointer.String("named-graph"),
+				},
+				{
+					Action:       pointer.String("WRITE"),
+					Resource:     []string{dbName, fullNameNGH},
+					ResourceType: pointer.String("named-graph"),
+				},
+			}
+			perms = append(perms, ngPermHidden...)
+		}
 		perms = append(perms, ngPerm...)
 	}
 	return perms
 }
 
-func getFullNamedGraph(orgName, namedGraphPrefix string, ng string) string {
+func getFullNamedGraph(orgName, namedGraphPrefix, ng string, hidden bool) string {
+	if hidden {
+		return strings.TrimSuffix(namedGraphPrefix, "/") + "/" + orgName + "/" + ng + "/hidden"
+	}
 	return strings.TrimSuffix(namedGraphPrefix, "/") + "/" + orgName + "/" + ng
 }
 
 func getGraphPermissionForNameGraphs(namedGraph, dbName string) []models.Permission {
+	resources := []string{namedGraph, dbName}
+	sort.Strings(resources)
 	return []models.Permission{
 		{
 			Action:       pointer.String("READ"),
-			Resource:     []string{namedGraph, dbName},
+			Resource:     resources,
 			ResourceType: pointer.String("named-graph"),
 		},
 		{
 			Action:       pointer.String("WRITE"),
-			Resource:     []string{namedGraph, dbName},
+			Resource:     resources,
 			ResourceType: pointer.String("named-graph"),
 		},
 	}

@@ -371,6 +371,28 @@ paths:
           description: unexpected error
           schema:
             "$ref": "#/definitions/Error"
+    get:
+      summary: Get a user.
+      operationId: getUser
+      tags:
+        - users
+      parameters:
+        - name: user
+          in: path
+          required: true
+          description: The username of the user to get
+          type: string
+      responses:
+        '204':
+          description: Null response
+        '404':
+          description: User does not exist
+          schema:
+            "$ref": "#/definitions/NotExists"
+        default:
+          description: unexpected error
+          schema:
+            "$ref": "#/definitions/Error"
   "/admin/roles":
     get:
       summary: List all roles.
