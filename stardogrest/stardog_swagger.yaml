@@ -383,8 +383,10 @@ paths:
           description: The username of the user to get
           type: string
       responses:
-        '204':
-          description: Null response
+        '200':
+          description: A user if it exists
+          schema:
+            "$ref": "#/definitions/Users"
         '404':
           description: User does not exist
           schema:

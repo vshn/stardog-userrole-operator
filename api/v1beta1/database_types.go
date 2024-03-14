@@ -21,6 +21,11 @@ type DatabaseSpec struct {
 	DatabaseName string `json:"databaseName,omitempty"`
 
 	//+kubebuilder:validation:optional
+	// AddUserForNonHiddenGraphs a dynamically managed user of this db with custom permissions
+	// Mainly used to not have access to hidden graphs
+	AddUserForNonHiddenGraphs string `json:"addUserForNonHiddenGraphs,omitempty"`
+
+	//+kubebuilder:validation:optional
 	// Options is the Stardog configuration options for this database. Only json input is valid.
 	Options string `json:"options,omitempty"`
 
@@ -35,11 +40,12 @@ type DatabaseSpec struct {
 
 // DatabaseStatus defines the observed state of the Database
 type DatabaseStatus struct {
-	DatabaseName        string                      `json:"databaseName,omitempty"`
-	NamedGraphPrefix    string                      `json:"namedGraphPrefix,omitempty"`
-	Options             string                      `json:"options,omitempty"`
-	StardogInstanceRefs []StardogInstanceRef        `json:"stardogInstanceRef,omitempty"`
-	Conditions          []v1alpha1.StardogCondition `json:"conditions,omitempty"`
+	DatabaseName              string                      `json:"databaseName,omitempty"`
+	AddUserForNonHiddenGraphs string                      `json:"addUserForNonHiddenGraphs,omitempty"`
+	NamedGraphPrefix          string                      `json:"namedGraphPrefix,omitempty"`
+	Options                   string                      `json:"options,omitempty"`
+	StardogInstanceRefs       []StardogInstanceRef        `json:"stardogInstanceRef,omitempty"`
+	Conditions                []v1alpha1.StardogCondition `json:"conditions,omitempty"`
 }
 
 //+kubebuilder:object:root=true

@@ -35,7 +35,7 @@ type NamedGraph struct {
 	// +kubebuilder:validation:optional
 	// +kubebuilder:default=false
 	// AddHidden adds another graph with the same name but with a prefix "<named-graph-name/hidden>"
-	AddHidden bool `json:"addHidden,omitempty"`
+	AddHidden bool `json:"addHidden"`
 }
 
 // OrganizationStatus defines the observed state of the Organization

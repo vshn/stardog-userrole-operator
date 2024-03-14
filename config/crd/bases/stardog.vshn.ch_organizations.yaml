@@ -61,6 +61,8 @@ spec:
                     name:
                       description: The name of the Named Graph
                       type: string
+                  required:
+                  - addHidden
                   type: object
                 type: array
             type: object
@@ -107,6 +109,8 @@ spec:
                     name:
                       description: The name of the Named Graph
                       type: string
+                  required:
+                  - addHidden
                   type: object
                 type: array
               stardogInstanceRefs:
