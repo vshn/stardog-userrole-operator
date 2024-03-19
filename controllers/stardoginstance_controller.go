@@ -221,6 +221,10 @@ func (r *StardogInstanceReconciler) validateConnection(sir *StardogInstanceRecon
 	spec := sir.resource.Spec
 	credentials := spec.AdminCredentials
 
+	if spec.Disabled {
+		return nil
+	}
+
 	r.Log.V(1).Info("retrieving admin credentials from Secret", "secret", credentials.Namespace+"/"+credentials.SecretRef)
 	auth, err := rc.initStardogClient(r.Client, *sir.resource)
 	if err != nil {

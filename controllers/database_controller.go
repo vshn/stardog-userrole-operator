@@ -190,9 +190,13 @@ func (r *DatabaseReconciler) deleteDatabase(dr *DatabaseReconciliation, instance
 	database := dr.resource
 
 	r.Log.V(1).Info("setup Stardog Client from ", "ref", instance)
-	auth, err := dr.reconciliationContext.initStardogClientFromRef(r.Client, instance)
-	if err != nil {
-		return err
+	auth, disabled, err := dr.reconciliationContext.initStardogClientFromRef(r.Client, instance)
+	if err != nil || disabled {
+		if err != nil {
+			return fmt.Errorf("cannot initialize stardog client: %v", err)
+		}
+		r.Log.Info("skipping resource from reconciliation", "instance", instance.Name, "resource", dr.resource.Name)
+		return nil
 	}
 
 	stardogClient := dr.reconciliationContext.stardogClient
@@ -333,9 +337,13 @@ func (r *DatabaseReconciler) sync(dr *DatabaseReconciliation, instance stardogv1
 	customUser := database.Spec.AddUserForNonHiddenGraphs
 	customUserEnabled := customUser != ""
 
-	auth, err := rc.initStardogClientFromRef(r.Client, instance)
-	if err != nil {
-		return fmt.Errorf("cannot initialize stardog client: %v", err)
+	auth, disabled, err := rc.initStardogClientFromRef(r.Client, instance)
+	if err != nil || disabled {
+		if err != nil {
+			return fmt.Errorf("cannot initialize stardog client: %v", err)
+		}
+		r.Log.Info("skipping resource from reconciliation", "instance", instance.Name, "resource", dr.resource.Name)
+		return nil
 	}
 
 	// Generate and save credentials in k8s

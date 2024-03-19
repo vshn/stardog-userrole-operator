@@ -13,6 +13,8 @@ type StardogInstanceSpec struct {
 	// This is used by the Operator to make changes in the roles, permissions and users.
 	// +kubebuilder:validation:Required
 	AdminCredentials StardogUserCredentialsSpec `json:"adminCredentials,omitempty"`
+	// Disabled whether this instance is disabled or enabled for operator to recycle resources
+	Disabled bool `json:"disabled,omitempty"`
 }
 
 // StardogInstanceStatus defines the observed state of StardogInstance

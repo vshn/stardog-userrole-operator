@@ -50,6 +50,10 @@ spec:
                       the "username" and "password" keys.
                     type: string
                 type: object
+              disabled:
+                description: Disabled whether this instance is disabled or enabled
+                  for operator to recycle resources
+                type: boolean
               serverUrl:
                 description: ServerUrl describes the url of the Stardog Instance
                 type: string

@@ -207,9 +207,13 @@ func (r *OrganizationReconciler) sync(or *OrganizationReconciliation, instance s
 	orgName := org.Spec.Name
 	stardogClient := or.reconciliationContext.stardogClient
 
-	auth, err := rc.initStardogClientFromRef(r.Client, instance)
-	if err != nil {
-		return fmt.Errorf("cannot initialize stardog client: %v", err)
+	auth, disabled, err := rc.initStardogClientFromRef(r.Client, instance)
+	if err != nil || disabled {
+		if err != nil {
+			return fmt.Errorf("cannot initialize stardog client: %v", err)
+		}
+		r.Log.Info("skipping resource from reconciliation", "instance", instance.Name, "resource", or.resource.Name)
+		return nil
 	}
 
 	// Generate and save credentials in k8s
@@ -418,9 +422,13 @@ func (r *OrganizationReconciler) deleteOrganization(or *OrganizationReconciliati
 	orgName := org.Spec.Name
 
 	r.Log.V(1).Info("setup Stardog Client from ", "ref", instance)
-	auth, err := or.reconciliationContext.initStardogClientFromRef(r.Client, instance)
-	if err != nil {
-		return err
+	auth, disabled, err := or.reconciliationContext.initStardogClientFromRef(r.Client, instance)
+	if err != nil || disabled {
+		if err != nil {
+			return fmt.Errorf("cannot initialize stardog client: %v", err)
+		}
+		r.Log.Info("skipping resource from reconciliation", "instance", instance.Name, "resource", or.resource.Name)
+		return nil
 	}
 
 	stardogClient := or.reconciliationContext.stardogClient

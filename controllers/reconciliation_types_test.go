@@ -79,7 +79,7 @@ func Test_initStardogClientFromRef(t *testing.T) {
 
 			base64.StdEncoding.EncodeToString([]byte(username))
 
-			_, err = rc.initStardogClientFromRef(fakeKubeClient, stardogInstanceRef)
+			_, _, err = rc.initStardogClientFromRef(fakeKubeClient, stardogInstanceRef)
 
 			assert.Equal(t, tt.err, err)
 		})
