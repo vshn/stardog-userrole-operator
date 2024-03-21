@@ -179,7 +179,7 @@ func (r *OrganizationReconciler) validateSpecification(ctx context.Context, orga
 }
 
 func (r *OrganizationReconciler) syncOrganization(or *OrganizationReconciliation) error {
-	dbInstances := or.database.Status.StardogInstanceRefs
+	dbInstances := or.database.Spec.StardogInstanceRefs
 	orgInstances := or.resource.Status.StardogInstanceRefs
 
 	// Create an organization for each instance in spec.StardogInstanceRefs

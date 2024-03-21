@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"errors"
 	"fmt"
 	"github.com/vshn/stardog-userrole-operator/stardogrest/client/db"
 	"github.com/vshn/stardog-userrole-operator/stardogrest/client/roles"
@@ -258,14 +257,6 @@ func environmentDisabled(object client.Object) bool {
 		if env == object.GetNamespace() {
 			return true
 		}
-	}
-	return false
-}
-
-// TODO check other calls to stardog client and manage here the response
-func notFound(err error) bool {
-	if resp, ok := err.(StardogResponse); ok || errors.As(err, &resp) {
-		return resp.IsCode(404)
 	}
 	return false
 }
