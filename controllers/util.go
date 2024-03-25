@@ -21,6 +21,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+type StardogResponse interface {
+	IsCode(code int) bool
+}
+
 var (
 	ReconFreqErr         = time.Second * 30
 	ReconFreq            = time.Duration(0)

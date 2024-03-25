@@ -743,6 +743,7 @@ func createDeletedStardogUser(namespace, stardogUserName, stardogInstanceRef, se
 	user := createStardogUser(namespace, stardogUserName, stardogInstanceRef, secretRef, roles)
 	newTime := metav1.NewTime(time.Now())
 	user.SetDeletionTimestamp(&newTime)
+	user.SetFinalizers([]string{"finalizer"})
 	return user
 }
 

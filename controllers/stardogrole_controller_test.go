@@ -910,6 +910,7 @@ func createDeletedStardogRole(namespace, stardogRoleName, stardogInstanceRef str
 	stardogRole := createStardogRole(namespace, stardogRoleName, stardogInstanceRef, permissions)
 	newTime := metav1.NewTime(time.Now())
 	stardogRole.SetDeletionTimestamp(&newTime)
+	stardogRole.SetFinalizers([]string{"finalizer"})
 	return stardogRole
 }
 

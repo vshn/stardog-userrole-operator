@@ -80,14 +80,22 @@ func (rc *ReconciliationContext) initStardogClient(kubeClient client.Client, sta
 	return auth.BasicAuth(adminUsername, adminPassword), nil
 }
 
-func (rc *ReconciliationContext) initStardogClientFromRef(kubeClient client.Client, instance v1beta1.StardogInstanceRef) (runtime.ClientAuthInfoWriter, error) {
+func (rc *ReconciliationContext) initStardogClientFromRef(kubeClient client.Client, instance v1beta1.StardogInstanceRef) (runtime.ClientAuthInfoWriter, bool, error) {
 	stardogInstance := &StardogInstance{}
 	err := kubeClient.Get(rc.context, types.NamespacedName{Namespace: instance.Namespace, Name: instance.Name}, stardogInstance)
 	if err != nil {
-		return nil, fmt.Errorf("cannot retrieve stardogInstanceRef %s/%s: %v", instance.Namespace, instance.Name, err)
+		return nil, true, fmt.Errorf("cannot retrieve stardogInstanceRef %s/%s: %v", instance.Namespace, instance.Name, err)
+	}
+	if stardogInstance.Spec.Disabled {
+		return nil, true, nil
 	}
 	rc.namespace = stardogInstance.Namespace
-	return rc.initStardogClient(kubeClient, *stardogInstance)
+	stardogClient, err := rc.initStardogClient(kubeClient, *stardogInstance)
+	if err != nil {
+		return nil, true, err
+	}
+
+	return stardogClient, false, nil
 }
 
 func (rc *ReconciliationContext) getCredentials(kubeClient client.Client, credentials StardogUserCredentialsSpec, alternativeNamespace string) (username, password string, err error) {

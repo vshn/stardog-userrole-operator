@@ -117,16 +117,20 @@ func (r *StardogRoleReconciler) syncRole(srr *StardogRoleReconciliation) error {
 	spec := srr.resource.Spec
 	namespace := srr.reconciliationContext.namespace
 	roleName := spec.RoleName
+	instance := v1beta1.NewStardogInstanceRef(spec.StardogInstanceRef, namespace)
 	if roleName == "" {
 		roleName = srr.resource.Name
 	}
 
 	r.Log.V(1).Info("init Stardog Client from ", "ref", spec.StardogInstanceRef)
-	auth, err := srr.reconciliationContext.initStardogClientFromRef(r.Client, v1beta1.NewStardogInstanceRef(spec.StardogInstanceRef, namespace))
+	auth, disabled, err := srr.reconciliationContext.initStardogClientFromRef(r.Client, instance)
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot initialize stardog client: %v", err)
 	}
-
+	if disabled {
+		r.Log.Info("skipping resource from reconciliation", "instance", instance.Name, "resource", srr.resource.Name)
+		return nil
+	}
 	stardogClient := srr.reconciliationContext.stardogClient
 
 	r.Log.Info("synchronizing role", "role", roleName)
@@ -251,11 +255,15 @@ func (r *StardogRoleReconciler) deleteStardogRole(srr *StardogRoleReconciliation
 func (r *StardogRoleReconciler) finalize(srr *StardogRoleReconciliation) error {
 	spec := srr.resource.Spec
 	namespace := srr.reconciliationContext.namespace
-
+	instance := v1beta1.NewStardogInstanceRef(spec.StardogInstanceRef, namespace)
 	r.Log.V(1).Info("setup Stardog Client from ", "ref", spec.StardogInstanceRef)
-	auth, err := srr.reconciliationContext.initStardogClientFromRef(r.Client, v1beta1.NewStardogInstanceRef(spec.StardogInstanceRef, namespace))
+	auth, disabled, err := srr.reconciliationContext.initStardogClientFromRef(r.Client, instance)
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot initialize stardog client: %v", err)
+	}
+	if disabled {
+		r.Log.Info("skipping resource from reconciliation", "instance", instance.Name, "resource", srr.resource.Name)
+		return nil
 	}
 
 	stardogClient := srr.reconciliationContext.stardogClient

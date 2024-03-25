@@ -7,6 +7,8 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/go-openapi/runtime"
 	"github.com/sethvargo/go-password/password"
+	stardogv1alpha1 "github.com/vshn/stardog-userrole-operator/api/v1alpha1"
+	stardogv1beta1 "github.com/vshn/stardog-userrole-operator/api/v1beta1"
 	stardog "github.com/vshn/stardog-userrole-operator/stardogrest/client"
 	"github.com/vshn/stardog-userrole-operator/stardogrest/client/db"
 	"github.com/vshn/stardog-userrole-operator/stardogrest/client/roles"
@@ -16,19 +18,15 @@ import (
 	"github.com/vshn/stardog-userrole-operator/stardogrest/models"
 	"k8s.io/api/core/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	scheme "k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/pointer"
 	"k8s.io/utils/strings/slices"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-
-	stardogv1alpha1 "github.com/vshn/stardog-userrole-operator/api/v1alpha1"
-	stardogv1beta1 "github.com/vshn/stardog-userrole-operator/api/v1beta1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-
-	"k8s.io/apimachinery/pkg/types"
 )
 
 const databaseFinalizer = "finalizer.stardog.databases"
@@ -127,6 +125,7 @@ func (r *DatabaseReconciler) reconcileDatabase(dr *DatabaseReconciliation) (ctrl
 	}
 
 	database.Status.StardogInstanceRefs = database.Spec.StardogInstanceRefs
+	database.Status.AddUserForNonHiddenGraphs = database.Spec.AddUserForNonHiddenGraphs
 	rc.SetStatusCondition(createStatusConditionReady(true, "Synchronized"))
 	return ctrl.Result{Requeue: true, RequeueAfter: ReconFreq}, r.updateStatus(dr)
 }
@@ -191,9 +190,13 @@ func (r *DatabaseReconciler) deleteDatabase(dr *DatabaseReconciliation, instance
 	database := dr.resource
 
 	r.Log.V(1).Info("setup Stardog Client from ", "ref", instance)
-	auth, err := dr.reconciliationContext.initStardogClientFromRef(r.Client, instance)
+	auth, disabled, err := dr.reconciliationContext.initStardogClientFromRef(r.Client, instance)
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot initialize stardog client: %v", err)
+	}
+	if disabled {
+		r.Log.Info("skipping resource from reconciliation", "instance", instance.Name, "resource", dr.resource.Name)
+		return nil
 	}
 
 	stardogClient := dr.reconciliationContext.stardogClient
@@ -213,22 +216,7 @@ func (r *DatabaseReconciler) deleteDatabase(dr *DatabaseReconciliation, instance
 	}
 
 	read, write := getUserRoleNames(database.Spec.DatabaseName)
-
-	// Remove permissions
-	permReadParam := roles_permissions.NewRemoveRolePermissionParams().WithRole(read)
-	for _, p := range getDBReadPermissions(database) {
-		_, err = stardogClient.RolesPermissions.RemoveRolePermission(permReadParam.WithPermission(&p), auth)
-		if err != nil && !NotFound(err) {
-			return fmt.Errorf("cannot remove permission %#v of role %s: %v", p, read, err)
-		}
-	}
-	permWriteParam := roles_permissions.NewRemoveRolePermissionParams().WithRole(write)
-	for _, p := range getDBWritePermissions(database) {
-		_, err = stardogClient.RolesPermissions.RemoveRolePermission(permWriteParam.WithPermission(&p), auth)
-		if err != nil && !NotFound(err) {
-			return fmt.Errorf("cannot remove permission %#v of role %s: %v", p, write, err)
-		}
-	}
+	customUser := database.Status.AddUserForNonHiddenGraphs
 
 	// Remove assigned roles to users
 	param := users_roles.NewRemoveRoleOfUserParams()
@@ -267,6 +255,11 @@ func (r *DatabaseReconciler) deleteDatabase(dr *DatabaseReconciliation, instance
 		return fmt.Errorf("cannot remove write user %s: %v", write, err)
 	}
 
+	// remove the custom user associated with this db
+	err = deleteCustomUser(stardogClient, customUser, auth)
+	if err != nil {
+		return fmt.Errorf("cannot delete customUser user %s: %v", customUser, err)
+	}
 	// Remove database
 	params := db.NewDropDatabaseParams().WithDb(database.Spec.DatabaseName)
 	_, err = stardogClient.Db.DropDatabase(params, auth)
@@ -295,6 +288,7 @@ func (r *DatabaseReconciler) validateSpecification(ctx context.Context, database
 	// If status is not set for database name then we treat it as a creation (first object reconciliation)
 	if status.DatabaseName == "" {
 		status.NamedGraphPrefix = spec.NamedGraphPrefix
+		status.AddUserForNonHiddenGraphs = spec.AddUserForNonHiddenGraphs
 		status.StardogInstanceRefs = spec.StardogInstanceRefs
 		status.DatabaseName = spec.DatabaseName
 		status.Options = spec.Options
@@ -340,10 +334,16 @@ func (r *DatabaseReconciler) sync(dr *DatabaseReconciliation, instance stardogv1
 	rc := dr.reconciliationContext
 	stardogClient := dr.reconciliationContext.stardogClient
 	database := dr.resource
+	customUser := database.Spec.AddUserForNonHiddenGraphs
+	customUserEnabled := customUser != ""
 
-	auth, err := rc.initStardogClientFromRef(r.Client, instance)
+	auth, disabled, err := rc.initStardogClientFromRef(r.Client, instance)
 	if err != nil {
 		return fmt.Errorf("cannot initialize stardog client: %v", err)
+	}
+	if disabled {
+		r.Log.Info("skipping resource from reconciliation", "instance", instance.Name, "resource", dr.resource.Name)
+		return nil
 	}
 
 	// Generate and save credentials in k8s
@@ -378,25 +378,34 @@ func (r *DatabaseReconciler) sync(dr *DatabaseReconciliation, instance stardogv1
 		{Password: []string{readPwd}, Username: &readName},
 		{Password: []string{writePwd}, Username: &writeName},
 	}
-	usrs, err = createDefaultUsersForDB(stardogClient, auth, usrs)
+	rolenames := []models.Rolename{
+		{Rolename: &readName},
+		{Rolename: &writeName},
+	}
+	if customUserEnabled {
+		customUsrPwd, err := generatePassword()
+		if err != nil {
+			return err
+		}
+		usrs = append(usrs, models.User{Password: []string{customUsrPwd}, Username: &customUser})
+		rolenames = append(rolenames, models.Rolename{Rolename: &customUser})
+	}
+
+	createdUsrs, err := createDefaultUsersForDB(stardogClient, auth, usrs)
 	if err != nil {
 		r.Log.Error(err, "error creating users", "users", usrs)
 		return err
 	}
 	// don't create any credential secret if no users have been created in Stardog
-	if len(usrs) != 0 {
-		err = r.createCredentials(dr, secretName, usrs)
+	if len(createdUsrs) != 0 {
+		err = r.createCredentials(dr, secretName, createdUsrs)
 		if err != nil {
-			r.Log.Error(err, "error creating secret credentials", "users", usrs)
+			r.Log.Error(err, "error creating secret credentials", "users", createdUsrs)
 			return err
 		}
 	}
 
 	// create default read and write roles
-	rolenames := []models.Rolename{
-		{Rolename: &readName},
-		{Rolename: &writeName},
-	}
 	err = createDefaultRolesForDB(stardogClient, auth, rolenames)
 	if err != nil {
 		r.Log.Error(err, "error creating roles", "roles", rolenames)
@@ -404,67 +413,83 @@ func (r *DatabaseReconciler) sync(dr *DatabaseReconciliation, instance stardogv1
 	}
 
 	//create read and write permissions for user roles
-	readPerms := getDBReadPermissions(database)
+	readPerms := getDBReadPermissions(database.Spec.DatabaseName)
+	writePerms := getDBWritePermissions(database.Spec.DatabaseName)
+
 	err = createDefaultPermissions(stardogClient, auth, readName, readPerms)
 	if err != nil {
 		r.Log.Error(err, "adding permission to role failed", "role", readName, "permission", readPerms)
 		return err
 	}
 
-	writePerms := getDBWritePermissions(database)
-	err = createDefaultPermissions(stardogClient, auth, writeName, writePerms)
+	err = createDefaultPermissions(stardogClient, auth, writeName, append(writePerms, readPerms...))
 	if err != nil {
 		r.Log.Error(err, "adding permission to role failed", "role", writeName, "permission", writePerms)
 		return err
 	}
 
+	if customUserEnabled {
+		perms := readPerms
+		err = createDefaultPermissions(stardogClient, auth, customUser, perms)
+		if err != nil {
+			r.Log.Error(err, "adding permission to role failed", "role", writeName, "permission", writePerms)
+			return err
+		}
+	}
+
 	// assign roles to users
-	err = assignDefaultRoles(stardogClient, auth, readName, writeName)
+	err = assignDefaultRoles(stardogClient, auth, usrs)
 	if err != nil {
 		r.Log.Error(err, "error assigning roles to users")
 		return err
 	}
+
+	// delete custom user in case it has been removed or changed from the resource
+	statusCustomUser := database.Status.AddUserForNonHiddenGraphs
+	if (statusCustomUser != "" && customUser == "") || (statusCustomUser != "" && statusCustomUser != customUser) {
+		err = deleteCustomUser(stardogClient, statusCustomUser, auth)
+		if err != nil {
+			return fmt.Errorf("cannot delete custom user %s: %v", customUser, err)
+		}
+	}
+
 	return nil
 }
 
-func assignDefaultRoles(stardogClient *stardog.Stardog, auth runtime.ClientAuthInfoWriter, readName, writeName string) error {
-	readUserRolesResp, err := stardogClient.UsersRoles.ListUserRoles(users_roles.NewListUserRolesParams().WithUser(readName), auth)
-	if err != nil || !readUserRolesResp.IsSuccess() {
-		return fmt.Errorf("error getting user roles for user %s: %v", readName, err)
+func deleteCustomUser(stardogClient *stardog.Stardog, name string, auth runtime.ClientAuthInfoWriter) error {
+	_, err := stardogClient.UsersRoles.RemoveRoleOfUser(users_roles.NewRemoveRoleOfUserParams().WithUser(name).WithRole(name), auth)
+	if err != nil && !NotFound(err) {
+		return fmt.Errorf("cannot remove assigned role %s from user %s: %v", name, name, err)
 	}
+	_, err = stardogClient.Roles.RemoveRole(roles.NewRemoveRoleParams().WithRole(name), auth)
+	if err != nil && !NotFound(err) {
+		return fmt.Errorf("cannot remove customUser role %s: %v", name, err)
+	}
+	_, err = stardogClient.Users.RemoveUser(users.NewRemoveUserParams().WithUser(name), auth)
+	if err != nil && !NotFound(err) {
+		return fmt.Errorf("cannot remove customUser user %s: %v", name, err)
+	}
+	return nil
+}
 
-	if !slices.Contains(readUserRolesResp.Payload.Roles, readName) {
-		params := users_roles.NewAddRoleParams().
-			WithUser(readName).
-			WithRole(&models.Rolename{Rolename: &readName})
-		roleResp, err := stardogClient.UsersRoles.AddRole(params, auth)
-		if err != nil || !roleResp.IsSuccess() {
-			return fmt.Errorf("error assigning role %s to user %s: %v", readName, readName, err)
+func assignDefaultRoles(stardogClient *stardog.Stardog, auth runtime.ClientAuthInfoWriter, usrs []models.User) error {
+	for _, usr := range usrs {
+		username := *usr.Username
+		//role name is the same as username
+		rolename := *usr.Username
+		resp, err := stardogClient.UsersRoles.ListUserRoles(users_roles.NewListUserRolesParams().WithUser(username), auth)
+		if err != nil || !resp.IsSuccess() {
+			return fmt.Errorf("error getting user roles for user %s: %v", username, err)
 		}
-	}
 
-	writeUserRolesResp, err := stardogClient.UsersRoles.ListUserRoles(users_roles.NewListUserRolesParams().WithUser(writeName), auth)
-	if err != nil || !writeUserRolesResp.IsSuccess() {
-		return fmt.Errorf("error getting user roles for user %s: %v", writeName, err)
-	}
-
-	if !slices.Contains(writeUserRolesResp.Payload.Roles, readName) {
-		params := users_roles.NewAddRoleParams().
-			WithUser(writeName).
-			WithRole(&models.Rolename{Rolename: &readName})
-		roleResp, err := stardogClient.UsersRoles.AddRole(params, auth)
-		if err != nil || !roleResp.IsSuccess() {
-			return fmt.Errorf("error assigning role %s to user %s: %v", readName, writeName, err)
-		}
-	}
-
-	if !slices.Contains(writeUserRolesResp.Payload.Roles, writeName) {
-		params := users_roles.NewAddRoleParams().
-			WithUser(writeName).
-			WithRole(&models.Rolename{Rolename: &writeName})
-		roleResp, err := stardogClient.UsersRoles.AddRole(params, auth)
-		if err != nil || !roleResp.IsSuccess() {
-			return fmt.Errorf("error assigning role %s to user %s: %v", writeName, writeName, err)
+		if !slices.Contains(resp.Payload.Roles, username) {
+			params := users_roles.NewAddRoleParams().
+				WithUser(username).
+				WithRole(&models.Rolename{Rolename: &rolename})
+			roleResp, err := stardogClient.UsersRoles.AddRole(params, auth)
+			if err != nil || !roleResp.IsSuccess() {
+				return fmt.Errorf("error assigning role %s to user %s: %v", username, rolename, err)
+			}
 		}
 	}
 	return nil
@@ -626,31 +651,31 @@ func createDefaultRolesForDB(stardogClient *stardog.Stardog, auth runtime.Client
 	return nil
 }
 
-func getDBWritePermissions(database *stardogv1beta1.Database) []models.Permission {
+func getDBWritePermissions(database string) []models.Permission {
 	return []models.Permission{
 		{
 			Action:       pointer.String("WRITE"),
-			Resource:     []string{database.Spec.DatabaseName},
+			Resource:     []string{database},
 			ResourceType: pointer.String("db"),
 		},
 		{
 			Action:       pointer.String("WRITE"),
-			Resource:     []string{database.Spec.DatabaseName},
+			Resource:     []string{database},
 			ResourceType: pointer.String("metadata"),
 		},
 	}
 }
 
-func getDBReadPermissions(database *stardogv1beta1.Database) []models.Permission {
+func getDBReadPermissions(database string) []models.Permission {
 	return []models.Permission{
 		{
 			Action:       pointer.String("READ"),
-			Resource:     []string{database.Spec.DatabaseName},
+			Resource:     []string{database},
 			ResourceType: pointer.String("db"),
 		},
 		{
 			Action:       pointer.String("READ"),
-			Resource:     []string{database.Spec.DatabaseName},
+			Resource:     []string{database},
 			ResourceType: pointer.String("metadata"),
 		},
 	}

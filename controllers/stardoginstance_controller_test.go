@@ -695,7 +695,7 @@ func Test_ReconcileStardogInstance(t *testing.T) {
 func createStardogInstance(namespace, name, secretName, serverURL string) *v1alpha1.StardogInstance {
 	return &v1alpha1.StardogInstance{
 		TypeMeta:   metav1.TypeMeta{Kind: "StardogInstance", APIVersion: "v1alpha1"},
-		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace, Finalizers: make([]string, 0)},
 		Spec: v1alpha1.StardogInstanceSpec{
 			AdminCredentials: v1alpha1.StardogUserCredentialsSpec{
 				Namespace: namespace,
@@ -710,6 +710,7 @@ func createDeletedStardogInstance(namespace, name, secretName, serverURL string)
 	stardogInstace := createStardogInstance(namespace, name, secretName, serverURL)
 	newTime := metav1.NewTime(time.Now())
 	stardogInstace.SetDeletionTimestamp(&newTime)
+	stardogInstace.SetFinalizers([]string{"finalizer"})
 	return stardogInstace
 }
 

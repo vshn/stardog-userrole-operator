@@ -23,7 +23,12 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sort"
 	"strings"
+	"time"
 )
 
 const orgFinalizer = "finalizer.stardog.organizations"
@@ -174,13 +179,13 @@ func (r *OrganizationReconciler) validateSpecification(ctx context.Context, orga
 }
 
 func (r *OrganizationReconciler) syncOrganization(or *OrganizationReconciliation) error {
-	dbInstances := or.database.Status.StardogInstanceRefs
+	dbInstances := or.database.Spec.StardogInstanceRefs
 	orgInstances := or.resource.Status.StardogInstanceRefs
 
 	// Create an organization for each instance in spec.StardogInstanceRefs
 	for _, instance := range dbInstances {
 		if err := r.sync(or, instance); err != nil {
-			return fmt.Errorf("unable to sync instance %s for organization %s", instance.Name, or.resource.Name)
+			return fmt.Errorf("unable to sync instance %s for organization %s: %v", instance.Name, or.resource.Name, err)
 		}
 	}
 
@@ -202,9 +207,13 @@ func (r *OrganizationReconciler) sync(or *OrganizationReconciliation, instance s
 	orgName := org.Spec.Name
 	stardogClient := or.reconciliationContext.stardogClient
 
-	auth, err := rc.initStardogClientFromRef(r.Client, instance)
+	auth, disabled, err := rc.initStardogClientFromRef(r.Client, instance)
 	if err != nil {
 		return fmt.Errorf("cannot initialize stardog client: %v", err)
+	}
+	if disabled {
+		r.Log.Info("skipping resource from reconciliation", "instance", instance.Name, "resource", or.resource.Name)
+		return nil
 	}
 
 	// Generate and save credentials in k8s
@@ -246,7 +255,7 @@ func (r *OrganizationReconciler) sync(or *OrganizationReconciliation, instance s
 	}
 
 	//create read and write permissions for user roles
-	perms := getOrganizationPerms(database, org, dbName)
+	perms := getOrganizationPerms(database, org, true, false)
 	err = createDefaultPermissions(stardogClient, auth, userRoleName, perms)
 	if err != nil {
 		r.Log.Error(err, "Adding permission to role failed", "role", userRoleName, "permission", perms)
@@ -266,6 +275,22 @@ func (r *OrganizationReconciler) sync(or *OrganizationReconciliation, instance s
 		r.Log.Error(err, "Cannot assign defaultRoles", "user", userRoleName)
 		return err
 	}
+
+	//create read permission for public user for this organisation
+	roleNameCustomUser := database.Spec.AddUserForNonHiddenGraphs
+	permsCustomUser := getOrganizationPerms(database, org, false, true)
+	err = createDefaultPermissions(stardogClient, auth, roleNameCustomUser, permsCustomUser)
+	if err != nil {
+		r.Log.Error(err, "Adding permission to role failed", "role", roleNameCustomUser, "permission", permsCustomUser)
+		return err
+	}
+
+	err = adjustPermissionsForCustomUser(org, database, stardogClient, auth, roleNameCustomUser)
+	if err != nil {
+		r.Log.Error(err, "Cannot remove permissions")
+		return err
+	}
+
 	return nil
 }
 
@@ -287,18 +312,72 @@ func assignDefaultRole(stardogClient *stardog.Stardog, auth runtime.ClientAuthIn
 	return nil
 }
 
+func adjustPermissionsForCustomUser(org *stardogv1beta1.Organization, database *stardogv1beta1.Database, stardogClient *stardog.Stardog, auth runtime.ClientAuthInfoWriter, userRoleName string) error {
+	for _, statusGraph := range org.Status.NamedGraphs {
+		statusGraphName := statusGraph.Name
+		perm := roles_permissions.NewRemoveRolePermissionParams().WithRole(userRoleName)
+		if !contains(stardogv1beta1.GetNamedGraphNames(org.Spec.NamedGraphs), statusGraph.Name) {
+			return removePermissionForCustomUser(org, database, stardogClient, auth, perm, statusGraphName)
+		}
+	}
+	return nil
+}
+
+func removePermissionForCustomUser(org *stardogv1beta1.Organization, database *stardogv1beta1.Database, stardogClient *stardog.Stardog, auth runtime.ClientAuthInfoWriter, perm *roles_permissions.RemoveRolePermissionParams, statusGraphName string) error {
+	ng := getFullNamedGraph(org.Spec.Name, database.Spec.NamedGraphPrefix, statusGraphName, false)
+	resources := []string{ng, database.Spec.DatabaseName}
+	sort.Strings(resources)
+	p := models.Permission{
+		Action:       pointer.String("READ"),
+		Resource:     resources,
+		ResourceType: pointer.String("named-graph"),
+	}
+	pResp, err := stardogClient.RolesPermissions.RemoveRolePermission(perm.WithPermission(&p), auth)
+	if err != nil || !pResp.IsSuccess() {
+		return fmt.Errorf("cannot remove permission %+v for graph %s: %v", p, ng, err)
+	}
+	return nil
+}
+
 func removePermissions(org *stardogv1beta1.Organization, database *stardogv1beta1.Database, stardogClient *stardog.Stardog, auth runtime.ClientAuthInfoWriter, userRoleName string) error {
-	for _, graph := range org.Status.NamedGraphs {
-		if !contains(org.Spec.NamedGraphs, graph) {
-			perm := roles_permissions.NewRemoveRolePermissionParams().WithRole(userRoleName)
-			ng := getFullNamedGraph(org.Spec.Name, database.Spec.NamedGraphPrefix, graph)
+	for _, statusGraph := range org.Status.NamedGraphs {
+		perm := roles_permissions.NewRemoveRolePermissionParams().WithRole(userRoleName)
+		if !contains(stardogv1beta1.GetNamedGraphNames(org.Spec.NamedGraphs), statusGraph.Name) {
+			ng := getFullNamedGraph(org.Spec.Name, database.Spec.NamedGraphPrefix, statusGraph.Name, false)
 			for _, p := range getGraphPermissionForNameGraphs(ng, database.Spec.DatabaseName) {
 				pResp, err := stardogClient.RolesPermissions.RemoveRolePermission(perm.WithPermission(&p), auth)
 				if err != nil || !pResp.IsSuccess() {
-					return fmt.Errorf("cannot remove permission %+v for graph %s: %v", p, ng, err)
+					return fmt.Errorf("cannot remove permission %+v for graph %s of role %s: %v", p, ng, userRoleName, err)
+				}
+			}
+
+			// If a NamedGraph has AddHidden then remove the permission from the hidden graph as well
+			if statusGraph.AddHidden {
+				ngh := getFullNamedGraph(org.Spec.Name, database.Spec.NamedGraphPrefix, statusGraph.Name, true)
+				for _, p := range getGraphPermissionForNameGraphs(ngh, database.Spec.DatabaseName) {
+					pResp, err := stardogClient.RolesPermissions.RemoveRolePermission(perm.WithPermission(&p), auth)
+					if err != nil || !pResp.IsSuccess() {
+						return fmt.Errorf("cannot remove permission %+v for graph %s of user %s: %v", p, ngh, userRoleName, err)
+					}
+				}
+			}
+		} else {
+			// If the named graph still exists but has AddHidden true then delete the hidden graph
+			specGraph, err := stardogv1beta1.FindNamedGraphByName(org.Spec.NamedGraphs, statusGraph.Name)
+			if err != nil {
+				return fmt.Errorf("cannot find spec graph by name %s: %v", statusGraph.Name, err)
+			}
+			if specGraph.AddHidden == false && statusGraph.AddHidden == true {
+				ngh := getFullNamedGraph(org.Spec.Name, database.Spec.NamedGraphPrefix, statusGraph.Name, true)
+				for _, p := range getGraphPermissionForNameGraphs(ngh, database.Spec.DatabaseName) {
+					pResp, err := stardogClient.RolesPermissions.RemoveRolePermission(perm.WithPermission(&p), auth)
+					if err != nil || !pResp.IsSuccess() {
+						return fmt.Errorf("cannot remove permission %+v for graph %s of role %s: %v", p, ngh, userRoleName, err)
+					}
 				}
 			}
 		}
+
 	}
 	return nil
 }
@@ -343,9 +422,14 @@ func (r *OrganizationReconciler) deleteOrganization(or *OrganizationReconciliati
 	orgName := org.Spec.Name
 
 	r.Log.V(1).Info("setup Stardog Client from ", "ref", instance)
-	auth, err := or.reconciliationContext.initStardogClientFromRef(r.Client, instance)
+	auth, disabled, err := or.reconciliationContext.initStardogClientFromRef(r.Client, instance)
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot initialize stardog client: %v", err)
+
+	}
+	if disabled {
+		r.Log.Info("skipping resource from reconciliation", "instance", instance.Name, "resource", or.resource.Name)
+		return nil
 	}
 
 	stardogClient := or.reconciliationContext.stardogClient
@@ -355,10 +439,20 @@ func (r *OrganizationReconciler) deleteOrganization(or *OrganizationReconciliati
 
 	// Remove all permissions
 	permParam := roles_permissions.NewRemoveRolePermissionParams().WithRole(userRoleName)
-	for _, p := range getOrganizationPerms(database, org, dbName) {
+	for _, p := range getOrganizationPerms(database, org, true, false) {
 		_, err = stardogClient.RolesPermissions.RemoveRolePermission(permParam.WithPermission(&p), auth)
 		if err != nil && !NotFound(err) {
 			return fmt.Errorf("cannot remove permission %#v of role %s: %v", p, userRoleName, err)
+		}
+	}
+
+	// Adjust permissions for custom user from the database if exists
+	customUser := database.Spec.AddUserForNonHiddenGraphs
+	if customUser != "" {
+		for _, statusGraph := range org.Status.NamedGraphs {
+			statusGraphName := statusGraph.Name
+			perm := roles_permissions.NewRemoveRolePermissionParams().WithRole(customUser)
+			return removePermissionForCustomUser(org, database, stardogClient, auth, perm, statusGraphName)
 		}
 	}
 
@@ -438,9 +532,34 @@ func (r *OrganizationReconciler) createCredentials(or *OrganizationReconciliatio
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *OrganizationReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	h := handler.EnqueueRequestsFromMapFunc(triggerOrgReconciliationFromDB(mgr.GetClient()))
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&stardogv1beta1.Organization{}).
+		Watches(&stardogv1beta1.Database{}, h).
 		Complete(r)
+}
+
+// triggerOrgReconciliation Trigger a reconciliation of all organizations of this database
+// This is required to update the custom user permissions from the organizations linked to this db
+func triggerOrgReconciliationFromDB(c client.Client) handler.MapFunc {
+	return func(ctx context.Context, db client.Object) []reconcile.Request {
+		l := log.FromContext(ctx).WithName("triggerOrgReconciliation")
+		var orgList stardogv1beta1.OrganizationList
+		if err := c.List(ctx, &orgList); err != nil {
+			l.Error(err, "failed to get organization list")
+			return nil
+		}
+
+		reqs := make([]reconcile.Request, 0)
+		for _, o := range orgList.Items {
+			if db.GetName() == o.Spec.DatabaseRef {
+				reqs = append(reqs, reconcile.Request{NamespacedName: types.NamespacedName{Name: o.GetName()}})
+			}
+		}
+		// Wait until database reconciled
+		time.Sleep(time.Second * 3)
+		return reqs
+	}
 }
 
 func getLoggingKeysAndValuesForOrganization(organization *stardogv1beta1.Organization) []interface{} {
@@ -453,47 +572,79 @@ func getUserAndRoleName(dbName, orgName string) string {
 	return fmt.Sprintf("%s-%s", dbName, orgName)
 }
 
-func getGraphPermissions(org *stardogv1beta1.Organization, namedGraphPrefix, dbName string) []models.Permission {
+func getGraphPermissions(org *stardogv1beta1.Organization, namedGraphPrefix, dbName string, withHidden, readOnly bool) []models.Permission {
 	perms := make([]models.Permission, 0)
+	orgName := org.Spec.Name
 	for _, ng := range org.Spec.NamedGraphs {
-		fullNameNG := getFullNamedGraph(org.Spec.Name, namedGraphPrefix, ng)
+		fullNameNG := getFullNamedGraph(orgName, namedGraphPrefix, ng.Name, false)
 		ngPerm := []models.Permission{
 			{
 				Action:       pointer.String("READ"),
 				Resource:     []string{dbName, fullNameNG},
 				ResourceType: pointer.String("named-graph"),
 			},
-			{
+		}
+		if !readOnly {
+			ngPerm = append(ngPerm, models.Permission{
 				Action:       pointer.String("WRITE"),
 				Resource:     []string{dbName, fullNameNG},
 				ResourceType: pointer.String("named-graph"),
-			},
+			})
+		}
+		if withHidden && ng.AddHidden {
+			fullNameNGH := getFullNamedGraph(orgName, namedGraphPrefix, ng.Name, true)
+			ngPermHidden := []models.Permission{
+				{
+					Action:       pointer.String("READ"),
+					Resource:     []string{dbName, fullNameNGH},
+					ResourceType: pointer.String("named-graph"),
+				},
+			}
+			if !readOnly {
+				ngPermHidden = append(ngPermHidden, models.Permission{
+					Action:       pointer.String("WRITE"),
+					Resource:     []string{dbName, fullNameNGH},
+					ResourceType: pointer.String("named-graph"),
+				})
+			}
+			perms = append(perms, ngPermHidden...)
 		}
 		perms = append(perms, ngPerm...)
 	}
 	return perms
 }
 
-func getFullNamedGraph(orgName, namedGraphPrefix string, ng string) string {
+func getFullNamedGraph(orgName, namedGraphPrefix, ng string, hidden bool) string {
+	if hidden {
+		return strings.TrimSuffix(namedGraphPrefix, "/") + "/" + orgName + "/" + ng + "/hidden"
+	}
 	return strings.TrimSuffix(namedGraphPrefix, "/") + "/" + orgName + "/" + ng
 }
 
 func getGraphPermissionForNameGraphs(namedGraph, dbName string) []models.Permission {
+	resources := []string{namedGraph, dbName}
+	sort.Strings(resources)
 	return []models.Permission{
 		{
 			Action:       pointer.String("READ"),
-			Resource:     []string{namedGraph, dbName},
+			Resource:     resources,
 			ResourceType: pointer.String("named-graph"),
 		},
 		{
 			Action:       pointer.String("WRITE"),
-			Resource:     []string{namedGraph, dbName},
+			Resource:     resources,
 			ResourceType: pointer.String("named-graph"),
 		},
 	}
 }
 
-func getOrganizationPerms(database *stardogv1beta1.Database, org *stardogv1beta1.Organization, dbName string) []models.Permission {
-	dbPerms := append(getDBReadPermissions(database), getDBWritePermissions(database)...)
-	return append(dbPerms, getGraphPermissions(org, database.Spec.NamedGraphPrefix, dbName)...)
+func getOrganizationPerms(database *stardogv1beta1.Database, org *stardogv1beta1.Organization, withHidden, readOnly bool) []models.Permission {
+	db := database.Spec.DatabaseName
+	graphPerm := getGraphPermissions(org, database.Spec.NamedGraphPrefix, db, withHidden, readOnly)
+	dbReadPerm := getDBReadPermissions(db)
+	perm := append(dbReadPerm, graphPerm...)
+	if readOnly {
+		return perm
+	}
+	return append(perm, getDBWritePermissions(db)...)
 }

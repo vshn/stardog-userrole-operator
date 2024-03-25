@@ -32,6 +32,8 @@ type ClientService interface {
 
 	CreateUser(params *CreateUserParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*CreateUserCreated, error)
 
+	GetUser(params *GetUserParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetUserOK, error)
+
 	IsEnabled(params *IsEnabledParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*IsEnabledOK, error)
 
 	IsSuperuser(params *IsSuperuserParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*IsSuperuserOK, error)
@@ -120,6 +122,44 @@ func (a *Client) CreateUser(params *CreateUserParams, authInfo runtime.ClientAut
 	}
 	// unexpected success response
 	unexpectedSuccess := result.(*CreateUserDefault)
+	return nil, runtime.NewAPIError("unexpected success response: content available as default response in error", unexpectedSuccess, unexpectedSuccess.Code())
+}
+
+/*
+GetUser gets a user
+*/
+func (a *Client) GetUser(params *GetUserParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetUserOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewGetUserParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "getUser",
+		Method:             "GET",
+		PathPattern:        "/admin/users/{user}",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http"},
+		Params:             params,
+		Reader:             &GetUserReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		opt(op)
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*GetUserOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	unexpectedSuccess := result.(*GetUserDefault)
 	return nil, runtime.NewAPIError("unexpected success response: content available as default response in error", unexpectedSuccess, unexpectedSuccess.Code())
 }
 

@@ -79,7 +79,7 @@ func Test_initStardogClientFromRef(t *testing.T) {
 
 			base64.StdEncoding.EncodeToString([]byte(username))
 
-			_, err = rc.initStardogClientFromRef(fakeKubeClient, stardogInstanceRef)
+			_, _, err = rc.initStardogClientFromRef(fakeKubeClient, stardogInstanceRef)
 
 			assert.Equal(t, tt.err, err)
 		})
@@ -185,12 +185,28 @@ func createPartialSecret(namespace, name, username, password string) *v1.Secret 
 }
 
 func createKubeFakeClient(initObjs ...runtime.Object) (client.Client, error) {
+	s := scheme.Scheme
 	err := stardogv1alpha1.AddToScheme(scheme.Scheme)
+	err = v1beta1.AddToScheme(scheme.Scheme)
 	if err != nil {
 		return nil, err
 	}
 	return fake.NewClientBuilder().
-		WithScheme(scheme.Scheme).
+		WithScheme(s).
 		WithRuntimeObjects(initObjs...).
+		Build(), nil
+}
+
+func createKubeFakeClientWithSub(initObjs ...client.Object) (client.Client, error) {
+	s := scheme.Scheme
+	err := stardogv1alpha1.AddToScheme(scheme.Scheme)
+	err = v1beta1.AddToScheme(scheme.Scheme)
+	if err != nil {
+		return nil, err
+	}
+	return fake.NewClientBuilder().
+		WithScheme(s).
+		WithObjects(initObjs...).
+		WithStatusSubresource(&v1beta1.Organization{}, &v1beta1.Database{}).
 		Build(), nil
 }

@@ -220,6 +220,26 @@ func (mr *MockStardogTestClientMockRecorder) GetDBSize(params, authInfo interfac
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDBSize", reflect.TypeOf((*MockStardogTestClient)(nil).GetDBSize), varargs...)
 }
 
+// GetUser mocks base method.
+func (m *MockStardogTestClient) GetUser(params *users.GetUserParams, authInfo runtime.ClientAuthInfoWriter, opts ...users.ClientOption) (*users.GetUserOK, error) {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{params, authInfo}
+	for _, a := range opts {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "GetUser", varargs...)
+	ret0, _ := ret[0].(*users.GetUserOK)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetUser indicates an expected call of GetUser.
+func (mr *MockStardogTestClientMockRecorder) GetUser(params, authInfo interface{}, opts ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{params, authInfo}, opts...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUser", reflect.TypeOf((*MockStardogTestClient)(nil).GetUser), varargs...)
+}
+
 // IsEnabled mocks base method.
 func (m *MockStardogTestClient) IsEnabled(params *users.IsEnabledParams, authInfo runtime.ClientAuthInfoWriter, opts ...users.ClientOption) (*users.IsEnabledOK, error) {
 	m.ctrl.T.Helper()

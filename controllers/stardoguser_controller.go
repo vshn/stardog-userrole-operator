@@ -137,11 +137,16 @@ func (r *StardogUserReconciler) finalize(sur *StardogUserReconciliation) error {
 	rc := sur.reconciliationContext
 	spec := sur.resource.Spec
 	namespace := rc.namespace
+	instance := v1beta1.NewStardogInstanceRef(spec.StardogInstanceRef, namespace)
 
 	r.Log.V(1).Info("setup Stardog Client from ", "ref", spec.StardogInstanceRef)
-	auth, err := rc.initStardogClientFromRef(r.Client, v1beta1.NewStardogInstanceRef(spec.StardogInstanceRef, namespace))
+	auth, disabled, err := rc.initStardogClientFromRef(r.Client, instance)
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot initialize stardog client: %v", err)
+	}
+	if disabled {
+		r.Log.Info("skipping resource from reconciliation", "instance", instance.Name, "resource", sur.resource.Name)
+		return nil
 	}
 
 	_, err = rc.stardogClient.Users.RemoveUser(model_users.NewRemoveUserParams().WithUser(sur.resource.Name), auth)
@@ -167,11 +172,16 @@ func (r *StardogUserReconciler) syncUser(sur *StardogUserReconciliation) error {
 	spec := sur.resource.Spec
 	userCredentials := spec.Credentials
 	namespace := rc.namespace
+	instance := v1beta1.NewStardogInstanceRef(spec.StardogInstanceRef, namespace)
 
 	r.Log.V(1).Info("init Stardog Client from ", "ref", spec.StardogInstanceRef)
-	auth, err := rc.initStardogClientFromRef(r.Client, v1beta1.NewStardogInstanceRef(spec.StardogInstanceRef, namespace))
+	auth, disabled, err := rc.initStardogClientFromRef(r.Client, instance)
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot initialize stardog client: %v", err)
+	}
+	if disabled {
+		r.Log.Info("skipping resource from reconciliation", "instance", instance.Name, "resource", sur.resource.Name)
+		return nil
 	}
 
 	r.Log.V(1).Info("retrieving user credentials from Secret", "secret", userCredentials.Namespace+"/"+userCredentials.SecretRef)
