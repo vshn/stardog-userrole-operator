@@ -208,10 +208,10 @@ func (r *OrganizationReconciler) sync(or *OrganizationReconciliation, instance s
 	stardogClient := or.reconciliationContext.stardogClient
 
 	auth, disabled, err := rc.initStardogClientFromRef(r.Client, instance)
-	if err != nil || disabled {
-		if err != nil {
-			return fmt.Errorf("cannot initialize stardog client: %v", err)
-		}
+	if err != nil {
+		return fmt.Errorf("cannot initialize stardog client: %v", err)
+	}
+	if disabled {
 		r.Log.Info("skipping resource from reconciliation", "instance", instance.Name, "resource", or.resource.Name)
 		return nil
 	}
@@ -423,10 +423,11 @@ func (r *OrganizationReconciler) deleteOrganization(or *OrganizationReconciliati
 
 	r.Log.V(1).Info("setup Stardog Client from ", "ref", instance)
 	auth, disabled, err := or.reconciliationContext.initStardogClientFromRef(r.Client, instance)
-	if err != nil || disabled {
-		if err != nil {
-			return fmt.Errorf("cannot initialize stardog client: %v", err)
-		}
+	if err != nil {
+		return fmt.Errorf("cannot initialize stardog client: %v", err)
+
+	}
+	if disabled {
 		r.Log.Info("skipping resource from reconciliation", "instance", instance.Name, "resource", or.resource.Name)
 		return nil
 	}

@@ -141,10 +141,10 @@ func (r *StardogUserReconciler) finalize(sur *StardogUserReconciliation) error {
 
 	r.Log.V(1).Info("setup Stardog Client from ", "ref", spec.StardogInstanceRef)
 	auth, disabled, err := rc.initStardogClientFromRef(r.Client, instance)
-	if err != nil || disabled {
-		if err != nil {
-			return fmt.Errorf("cannot initialize stardog client: %v", err)
-		}
+	if err != nil {
+		return fmt.Errorf("cannot initialize stardog client: %v", err)
+	}
+	if disabled {
 		r.Log.Info("skipping resource from reconciliation", "instance", instance.Name, "resource", sur.resource.Name)
 		return nil
 	}
@@ -176,10 +176,10 @@ func (r *StardogUserReconciler) syncUser(sur *StardogUserReconciliation) error {
 
 	r.Log.V(1).Info("init Stardog Client from ", "ref", spec.StardogInstanceRef)
 	auth, disabled, err := rc.initStardogClientFromRef(r.Client, instance)
-	if err != nil || disabled {
-		if err != nil {
-			return fmt.Errorf("cannot initialize stardog client: %v", err)
-		}
+	if err != nil {
+		return fmt.Errorf("cannot initialize stardog client: %v", err)
+	}
+	if disabled {
 		r.Log.Info("skipping resource from reconciliation", "instance", instance.Name, "resource", sur.resource.Name)
 		return nil
 	}

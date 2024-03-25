@@ -124,10 +124,10 @@ func (r *StardogRoleReconciler) syncRole(srr *StardogRoleReconciliation) error {
 
 	r.Log.V(1).Info("init Stardog Client from ", "ref", spec.StardogInstanceRef)
 	auth, disabled, err := srr.reconciliationContext.initStardogClientFromRef(r.Client, instance)
-	if err != nil || disabled {
-		if err != nil {
-			return fmt.Errorf("cannot initialize stardog client: %v", err)
-		}
+	if err != nil {
+		return fmt.Errorf("cannot initialize stardog client: %v", err)
+	}
+	if disabled {
 		r.Log.Info("skipping resource from reconciliation", "instance", instance.Name, "resource", srr.resource.Name)
 		return nil
 	}
@@ -258,10 +258,10 @@ func (r *StardogRoleReconciler) finalize(srr *StardogRoleReconciliation) error {
 	instance := v1beta1.NewStardogInstanceRef(spec.StardogInstanceRef, namespace)
 	r.Log.V(1).Info("setup Stardog Client from ", "ref", spec.StardogInstanceRef)
 	auth, disabled, err := srr.reconciliationContext.initStardogClientFromRef(r.Client, instance)
-	if err != nil || disabled {
-		if err != nil {
-			return fmt.Errorf("cannot initialize stardog client: %v", err)
-		}
+	if err != nil {
+		return fmt.Errorf("cannot initialize stardog client: %v", err)
+	}
+	if disabled {
 		r.Log.Info("skipping resource from reconciliation", "instance", instance.Name, "resource", srr.resource.Name)
 		return nil
 	}
