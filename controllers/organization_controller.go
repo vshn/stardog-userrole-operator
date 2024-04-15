@@ -278,17 +278,19 @@ func (r *OrganizationReconciler) sync(or *OrganizationReconciliation, instance s
 
 	//create read permission for public user for this organisation
 	roleNameCustomUser := database.Spec.AddUserForNonHiddenGraphs
-	permsCustomUser := getOrganizationPerms(database, org, false, true)
-	err = createDefaultPermissions(stardogClient, auth, roleNameCustomUser, permsCustomUser)
-	if err != nil {
-		r.Log.Error(err, "Adding permission to role failed", "role", roleNameCustomUser, "permission", permsCustomUser)
-		return err
-	}
+	if roleNameCustomUser != "" {
+		permsCustomUser := getOrganizationPerms(database, org, false, true)
+		err = createDefaultPermissions(stardogClient, auth, roleNameCustomUser, permsCustomUser)
+		if err != nil {
+			r.Log.Error(err, "Adding permission to role failed", "role", roleNameCustomUser, "permission", permsCustomUser)
+			return err
+		}
 
-	err = adjustPermissionsForCustomUser(org, database, stardogClient, auth, roleNameCustomUser)
-	if err != nil {
-		r.Log.Error(err, "Cannot remove permissions")
-		return err
+		err = adjustPermissionsForCustomUser(org, database, stardogClient, auth, roleNameCustomUser)
+		if err != nil {
+			r.Log.Error(err, "Cannot remove permissions")
+			return err
+		}
 	}
 
 	return nil
