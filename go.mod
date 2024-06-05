@@ -3,7 +3,7 @@ module github.com/vshn/stardog-userrole-operator
 go 1.22
 
 require (
-	github.com/go-logr/logr v1.4.1
+	github.com/go-logr/logr v1.4.2
 	github.com/go-openapi/errors v0.20.4
 	github.com/go-openapi/runtime v0.26.0
 	github.com/go-openapi/strfmt v0.21.7
