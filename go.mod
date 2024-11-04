@@ -12,7 +12,7 @@ require (
 	github.com/golang/mock v1.6.0
 	github.com/onsi/ginkgo/v2 v2.14.0
 	github.com/onsi/gomega v1.30.0
-	github.com/sethvargo/go-password v0.2.0
+	github.com/sethvargo/go-password v0.3.1
 	github.com/stretchr/testify v1.8.4
 	golang.org/x/exp v0.0.0-20230817173708-d852ddb80c63
 	k8s.io/api v0.29.0
