@@ -1,6 +1,6 @@
 module github.com/vshn/stardog-userrole-operator
 
-go 1.22
+go 1.25
 
 require (
 	github.com/go-logr/logr v1.4.1
@@ -18,7 +18,7 @@ require (
 	k8s.io/api v0.29.0
 	k8s.io/apimachinery v0.29.0
 	k8s.io/client-go v0.29.0
-	k8s.io/utils v0.0.0-20230726121419-3b25d923346b
+	k8s.io/utils v0.0.0-20260707023825-cf1189d6abe3
 	sigs.k8s.io/controller-runtime v0.17.2
 )
 
